@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 
 // add commands to a group!
 #[group]
-#[commands(ping, about, quit)]
+#[commands(ping, about, info, quit)]
 struct General;
 
 struct Handler;
