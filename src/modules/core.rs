@@ -61,12 +61,15 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     //TODO reply with an embed with the bot's latency, cpu usage, memory usage, uptime, rust version, serenity version, and the number of shards
 
+    let sysinfo = get_sys().await;
+
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
             m.content("testing").embed(|e: &mut CreateEmbed| {
                 e.title("Bot info")
                     .description("This is a test")
-                    .field("Latency", latency, true);
+                    .field("Latency", latency, true)
+                    .field("System info", sysinfo, true);
 
                 e
             });
