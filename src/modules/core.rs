@@ -1,19 +1,16 @@
 use std::collections::HashSet;
 
-use crate::ShardManagerContainer; // impl in main.rs
-
 use crate::modules::utils::*;
 
 use serenity::{
     builder::{CreateEmbed, CreateMessage},
-    client::bridge::gateway::ShardId,
     framework::standard::{
         help_commands,
         macros::{command, help},
         Args, CommandGroup, CommandResult, HelpOptions,
     },
     model::{
-        channel::{Embed, Message},
+        channel::Message,
         id::UserId,
     },
     prelude::*,
@@ -61,7 +58,7 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     //TODO reply with an embed with the bot's latency, cpu usage, memory usage, uptime, rust version, serenity version, and the number of shards
 
-    let sysinfo = get_sys().await;
+    let sysinfo = get_sys(None).await;
 
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
