@@ -65,15 +65,16 @@ pub async fn get_sys() -> String{
     sys.refresh_all();
     
     let memory_usage = format!(
-        "{}B / {}B",
+        "{}B / {}B ({}%)",
         bytes_to_human(sys.used_memory()).await,
-        bytes_to_human(sys.total_memory()).await
+        bytes_to_human(sys.total_memory()).await,
+        sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
     );
     let cpu_count = format!("{}", sys.processors().len());
     let mut cpu_usage = String::new();
     for core in sys.processors() {
         cpu_usage.push_str(&format!(
-            "    {}%\n",
+            "\n    {}%",
             core.cpu_usage()
         ))
     }
