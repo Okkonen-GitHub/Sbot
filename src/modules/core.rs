@@ -10,7 +10,7 @@ use serenity::{
         Args, CommandGroup, CommandResult, HelpOptions,
     },
     model::{
-        channel::Message,
+        channel::{Message},
         id::UserId,
     },
     prelude::*,
@@ -58,16 +58,35 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     //TODO reply with an embed with the bot's latency, cpu usage, memory usage, uptime, rust version, serenity version, and the number of shards
 
-    let sysinfo = get_sys(None).await;
+    let sysinfo = get_sys(false).await;
+
+    let cpu_usage = sysinfo.get("cpu_usage").unwrap();
+    let memory_usage = sysinfo.get("memory_usage").unwrap();
+    let uptime = sysinfo.get("uptime").unwrap();
+    
+    let user = ctx.cache.current_user().await; // for the profile pic in the embed
+
 
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
-            m.content("testing").embed(|e: &mut CreateEmbed| {
+            m.content("testing")
+            .embed(|e: &mut CreateEmbed| {
                 e.title("Bot info")
+                    .author(
+                        | a| {
+                            a.name("Info");
+                            a.icon_url(user.avatar_url().unwrap_or("https://64.media.tumblr.com/126d5e1ad49ade5ff4b052d8441943aa/tumblr_py6pq79HeI1xny0zko1_540.png".to_string()))
+                        }
+                    )
                     .description("This is a test")
                     .field("Latency", latency, true)
-                    .field("System info", sysinfo, true);
-
+                    .field("Uptime", &uptime, true)
+                    .footer(
+                        |f| {
+                            f.text(format!("CPU: {}   RAM: {}", cpu_usage, memory_usage));
+                            f.icon_url("https://media.discordapp.net/attachments/514213558549217330/514345278669848597/8yx98C.gif")
+                        },
+                    );
                 e
             });
             m
