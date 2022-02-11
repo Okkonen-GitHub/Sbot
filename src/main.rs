@@ -57,6 +57,8 @@ async fn main() {
 
     let token = env::var("DISCORD_TOKEN").expect("token");
 
+    let prefix = "s";
+
     let http = Http::new_with_token(&token);
 
     // fetch your bot's owners and id
@@ -80,7 +82,7 @@ async fn main() {
     println!("{:?}", owners);
     let framework = StandardFramework::new()
         .configure(|c| {
-            c.prefix("s")
+            c.prefix(prefix)
                 .owners(owners)
                 .with_whitespace(true)
                 .on_mention(Some(bot_id))
