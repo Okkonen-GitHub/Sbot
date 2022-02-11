@@ -2,7 +2,9 @@ mod modules;
 
 use crate::modules::{core::*, owner::*};
 
-use std::{collections::HashSet, env, sync::Arc};
+use std::{collections::HashSet, env, sync::Arc, fs};
+
+
 
 use serenity::prelude::*;
 use serenity::{
@@ -16,7 +18,7 @@ use tokio::sync::Mutex;
 
 // add commands to a group!
 #[group]
-#[commands(ping, about, info, quit)]
+#[commands(ping, about, info, quit, addnum)]
 struct General;
 
 struct Handler;
@@ -66,6 +68,22 @@ async fn main() {
         prefix = "d"; // d for now...
     }
 
+    let path = env::current_dir().unwrap();
+
+    // println!("{:?}", &path);
+
+    if !(path.join("data/")).exists() {
+        fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
+    }
+
+    // fs::File::create("text.txt").expect("Failed to create text file");
+
+    let a = fs::File::open(path.join("data/data.json")).unwrap_or_else(|_| {
+        fs::File::create(path.join("data/data.json")).unwrap()
+    });
+    
+    drop(a);
+
 
     let http = Http::new_with_token(&token);
 
@@ -87,7 +105,7 @@ async fn main() {
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
-    println!("{:?}", owners);
+    // println!("{:?}", owners);
     let framework = StandardFramework::new()
         .configure(|c| {
             c.prefix(prefix)

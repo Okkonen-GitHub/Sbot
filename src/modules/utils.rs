@@ -1,10 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs, path::Path};
 
 use crate::ShardManagerContainer;
 
 use serenity::client::{bridge::gateway::ShardId, Context};
 
 use sysinfo::{System, SystemExt, ProcessorExt, ProcessExt};
+
+use serde_json;
 
 
 async fn bytes_to_human(mut bytes: u64) -> String {
@@ -107,4 +109,44 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     }
 
     sys_info
+}
+
+struct JsonDb {
+    pub path: &'static str,
+}
+
+impl JsonDb {
+    pub fn new(path: &'static str) -> Self {
+        JsonDb { path }
+    }
+
+    pub async fn get(&self, key: &str) -> Option<serde_json::Value> {
+        let file = fs::read_to_string(Path::new(&self.path));
+
+        if let Ok(file) = file {
+            let json: serde_json::Value = serde_json::from_str(&file).unwrap();
+
+            if let Some(val) = json.get(key) {
+                Some(val.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub async fn set(&self, key: &str, value: serde_json::Value) {
+        let file = fs::read_to_string(Path::new(&self.path));
+
+        if let Ok(file) = file {
+            let mut json: serde_json::Value = serde_json::from_str(&file).unwrap();
+
+            json[key] = value;
+
+            let json_str = serde_json::to_string(&json).unwrap();
+
+            fs::write(&self.path, json_str).unwrap();
+        }
+    }
 }
