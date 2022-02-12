@@ -18,7 +18,7 @@ use tokio::sync::Mutex;
 
 // add commands to a group!
 #[group]
-#[commands(ping, about, info, quit, addnum, getnum)]
+#[commands(ping, about, info, quit, addnum, getnum, getall)]
 struct General;
 
 struct Handler;
@@ -68,18 +68,18 @@ async fn main() {
         prefix = "d"; // d for now...
     }
 
-    let path = get_pwd();
+    let path = get_pwd().join("data/");
 
     // println!("{:?}", &path);
 
-    if !(path.join("data/")).exists() {
+    if !path.exists() {
         fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
     }
 
     // fs::File::create("text.txt").expect("Failed to create text file");
 
-    let a = fs::File::open(path.join("data/data.json")).unwrap_or_else(|_| {
-        let mut b = fs::File::create(path.join("data/data.json")).unwrap();
+    let a = fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
+        let mut b = fs::File::create(path.join("data.json")).unwrap();
         b.write(b"{}").unwrap();
         b
     });

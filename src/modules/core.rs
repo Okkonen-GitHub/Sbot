@@ -62,12 +62,13 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     let sysinfo = get_sys(false).await;
 
-    let cpu_usage = sysinfo.get("cpu_usage").unwrap();
+    // let cpu_usage = sysinfo.get("cpu_usage").unwrap();
     let memory_usage = sysinfo.get("memory_usage").unwrap();
-    let uptime = sysinfo.get("uptime").unwrap();
+    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
     
     let user = ctx.cache.current_user().await; // for the profile pic in the embed
 
+    let guilds = ctx.cache.guilds().await.len();
 
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
@@ -83,9 +84,10 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
                     .description("This is a test")
                     .field("Latency", latency, true)
                     .field("Uptime", &uptime, true)
+                    .field("Guilds", &guilds, true)
                     .footer(
                         |f| {
-                            f.text(format!("CPU: {}   RAM: {}", cpu_usage, memory_usage));
+                            f.text(format!("RAM: {}", memory_usage));
                             f.icon_url("https://media.discordapp.net/attachments/514213558549217330/514345278669848597/8yx98C.gif")
                         },
                     );
@@ -119,5 +121,15 @@ async fn getnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let val = db.get(&format!("num{}", num)).await;
     msg.reply(ctx, format!("{}", val.unwrap())).await?;
     
+    Ok(())
+}
+
+#[command]
+async fn getall(ctx: &Context, msg: &Message) -> CommandResult {
+    let path = get_pwd().join("data/data.json");
+    let db = JsonDb::new(path);
+    let val = db.get_all().await;
+    msg.reply(ctx, format!("{:?}", val.unwrap())).await?;
+
     Ok(())
 }
