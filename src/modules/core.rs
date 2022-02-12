@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use crate::modules::utils::*;
 
+use serde_json::{json};
+
 use serenity::{
     builder::{CreateEmbed, CreateMessage},
     framework::standard::{
@@ -99,7 +101,23 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     
-    println!("{}", &args.single::<f64>()?);
-    let db = JsonDb::new()
+    let num = &args.single::<f64>()?;
+    let path = get_pwd().join("data/data.json");
+    let db = JsonDb::new(path);
+    db.set(&format!("num{}", num), json!(num)).await;
+    
+    msg.reply(ctx, "Added to the db").await?;
+    Ok(())
+}
+
+#[command]
+async fn getnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    
+    let num = &args.single::<f64>()?;
+    let path = get_pwd().join("data/data.json");
+    let db = JsonDb::new(path);
+    let val = db.get(&format!("num{}", num)).await;
+    msg.reply(ctx, format!("{}", val.unwrap())).await?;
+    
     Ok(())
 }
