@@ -16,9 +16,9 @@ use serenity::{
 };
 use tokio::sync::Mutex;
 
-// add commands to a group!
+//* add commands to a group, this means you Okkonen!!!!
 #[group]
-#[commands(ping, about, info, quit, addnum, getnum, getall, uptime)]
+#[commands(ping, about, info, quit, uptime, fullinfo)]
 struct General;
 
 struct Handler;
@@ -60,7 +60,8 @@ async fn main() {
     let token: String;
     let prefix: &str;
 
-    if cfg!(release) {
+    if cfg!(not(debug_assertions)) {
+        println!("Running in release mode");
         token = env::var("DISCORD_TOKEN").expect("token");
         prefix = "s";
     } else { // development mode
@@ -68,23 +69,24 @@ async fn main() {
         prefix = "d"; // d for now...
     }
 
-    let path = get_pwd().join("data/");
+    if cfg!(debug_assertions) {
+        let path = get_pwd().join("data/");
 
-    // println!("{:?}", &path);
+        // println!("{:?}", &path);
 
-    if !path.exists() {
-        fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
+        if !path.exists() {
+            fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
+        }
+
+        // fs::File::create("text.txt").expect("Failed to create text file");
+
+        let a = fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
+            let mut b = fs::File::create(path.join("data.json")).unwrap();
+            b.write(b"{}").unwrap();
+            b
+        });
+        drop(a);
     }
-
-    // fs::File::create("text.txt").expect("Failed to create text file");
-
-    let a = fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
-        let mut b = fs::File::create(path.join("data.json")).unwrap();
-        b.write(b"{}").unwrap();
-        b
-    });
-    drop(a);
-
 
     let http = Http::new_with_token(&token);
 
