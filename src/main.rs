@@ -1,8 +1,10 @@
 mod modules;
 
-use crate::modules::{core::*, owner::*};
+use crate::modules::{core::*, owner::*, utils::*};
 
-use std::{collections::HashSet, env, sync::Arc};
+use std::{collections::HashSet, env, sync::Arc, fs, io::Write};
+
+
 
 use serenity::prelude::*;
 use serenity::{
@@ -14,9 +16,9 @@ use serenity::{
 };
 use tokio::sync::Mutex;
 
-// add commands to a group!
+//* add commands to a group, this means you Okkonen!!!!
 #[group]
-#[commands(ping, about, info, quit)]
+#[commands(ping, about, info, quit, uptime, fullinfo)]
 struct General;
 
 struct Handler;
@@ -54,8 +56,37 @@ impl TypeMapKey for ShardManagerContainer {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to load .env");
+    
+    let token: String;
+    let prefix: &str;
 
-    let token = env::var("DISCORD_TOKEN").expect("token");
+    if cfg!(not(debug_assertions)) {
+        println!("Running in release mode");
+        token = env::var("DISCORD_TOKEN").expect("token");
+        prefix = "s";
+    } else { // development mode
+        token = env::var("DEV_TOKEN").expect("token");
+        prefix = "d"; // d for now...
+    }
+
+    if cfg!(debug_assertions) {
+        let path = get_pwd().join("data/");
+
+        // println!("{:?}", &path);
+
+        if !path.exists() {
+            fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
+        }
+
+        // fs::File::create("text.txt").expect("Failed to create text file");
+
+        let a = fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
+            let mut b = fs::File::create(path.join("data.json")).unwrap();
+            b.write(b"{}").unwrap();
+            b
+        });
+        drop(a);
+    }
 
     let http = Http::new_with_token(&token);
 
@@ -77,10 +108,10 @@ async fn main() {
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
-    println!("{:?}", owners);
+    // println!("{:?}", owners);
     let framework = StandardFramework::new()
         .configure(|c| {
-            c.prefix("s")
+            c.prefix(prefix)
                 .owners(owners)
                 .with_whitespace(true)
                 .on_mention(Some(bot_id))
