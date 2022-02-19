@@ -53,7 +53,7 @@ impl EventHandler for Handler {
                 loop {
                     // println!("boe");
                     set_status(Arc::clone(&context)).await;
-                    tokio::time::sleep(Duration::from_secs(15)).await;
+                    tokio::time::sleep(Duration::from_secs(60)).await;
                 }
             });
         }
