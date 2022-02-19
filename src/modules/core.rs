@@ -1,4 +1,4 @@
-use std::{collections::HashSet};
+use std::{collections::HashSet, time::Instant};
 
 use crate::modules::utils::*;
 
@@ -50,6 +50,38 @@ async fn about(ctx: &Context, msg: &Message) -> CommandResult {
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     let latency = get_ping(ctx).await;
     msg.reply(ctx, format!("Bot latency: {}", latency)).await?;
+
+    Ok(())
+}
+
+#[command]
+#[aliases("bping")]
+async fn betterping(ctx: &Context, msg: &Message) -> CommandResult {
+    let latency = get_ping(ctx).await;
+    let get_latency = {
+        let now = Instant::now();
+        // `let _` to supress any errors. If they are a timeout, that will  be
+        // reflected in the plotted graph.
+        let _ = reqwest::get("https://discordapp.com/api/v6/gateway").await;
+        now.elapsed().as_millis() as f64
+    };
+    // "Websocket latency: 121 ms"
+    let latency = format!("Websocket latency: {}", latency);
+    let mut message = msg.reply(ctx, &latency).await?;
+    // "GET latency: 58 ms"
+    let get_latency = format!("{}\nGET latency: {} ms", latency, get_latency);
+    let post_latency ={
+        let duration = Instant::now();
+        message.edit(&ctx, |m| {
+            m.content(&get_latency)
+        }).await?;
+        duration.elapsed().as_millis() as f64
+    };
+    // "POST latency: 246 ms"
+    let post_latency = format!("{}\nPOST latency: {} ms", get_latency, post_latency);
+    message.edit(&ctx, |m| {
+        m.content(post_latency)
+    }).await?;
 
     Ok(())
 }
