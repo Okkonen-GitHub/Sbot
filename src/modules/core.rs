@@ -90,7 +90,7 @@ async fn betterping(ctx: &Context, msg: &Message) -> CommandResult {
 #[aliases("up")]
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let sysinfo = get_sys(false).await;
-    let uptime: String = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
+    let uptime: String = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
     msg.reply(ctx, format!("{uptime}")).await?;
     Ok(())
 }
@@ -108,7 +108,7 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     // let cpu_usage = sysinfo.get("cpu_usage").unwrap();
     let memory_usage = sysinfo.get("memory_usage").unwrap();
-    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
+    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
     
     let user = ctx.cache.current_user().await; // for the profile pic in the embed
 
@@ -154,7 +154,7 @@ async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
     let sysinfo = get_sys(true).await;
 
     let memory_usage = sysinfo.get("memory_usage").unwrap();
-    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
+    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
     
     let user = ctx.cache.current_user().await; // for the profile pic in the embed
 
