@@ -27,6 +27,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
             }
         }
         loop {
+            println!("sleeping");
             sleep(Duration::from_secs(10)).await;
             let reactions = match msg.reaction_users(ctx, '✅', None, Some(uid)).await {
                 Ok(v) => v,
@@ -35,6 +36,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
                     break;
                 }
             };
+            println!("clicked yes: {:?}", reactions);
             for user in reactions {
                 if user.id == uid {
                     println!("Shutting down... {}", user.name);
@@ -49,6 +51,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
                     break;
                 }
             };
+            println!("clicked no: {:?}", reactions);
             for user in reactions {
                 if user.id == uid {
                     let _ = resp.delete(ctx).await;
