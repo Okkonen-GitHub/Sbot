@@ -14,22 +14,22 @@ use crate::ShardManagerContainer;
 async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
     let uid = msg.author.id;
-
+    println!("uid: {}", uid);
     if let Some(manager) = data.get::<ShardManagerContainer>() {
         let resp = msg.reply(ctx, "Are you sure you want to shutdown the bot?").await?;
 
-        match msg.react(ctx, '✅').await {
+        match resp.react(ctx, '✅').await {
             Ok(_) => {
-                let _ = msg.react(ctx, '❌').await;
+                let _ = resp.react(ctx, '❌').await;
             }
             Err(why) => {
                 msg.reply(ctx, format!("Error: {}", why)).await?;
             }
         }
-        loop {
+        for _ in 0..240 {
             println!("sleeping");
-            sleep(Duration::from_secs(10)).await;
-            let reactions = match msg.reaction_users(ctx, '✅', None, Some(uid)).await {
+            sleep(Duration::from_millis(250)).await;
+            let reactions = match resp.reaction_users(ctx, '✅', None, Some(uid)).await {
                 Ok(v) => v,
                 Err(why) => {
                     msg.reply(ctx, format!("Error: {}", why)).await?;
@@ -44,7 +44,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
                     break;
                 }
             }
-            let reactions = match msg.reaction_users(ctx, '❌', None, Some(uid)).await {
+            let reactions = match resp.reaction_users(ctx, '❌', None, Some(uid)).await {
                 Ok(v) => v,
                 Err(why) => {
                     msg.reply(ctx, format!("Error: {}", why)).await?;
