@@ -51,7 +51,7 @@ impl EventHandler for Handler {
             tokio::spawn(async move {
                 loop {
                     // println!("boe");
-                    set_status(Arc::clone(&context)).await;
+                    set_random_status(Arc::clone(&context)).await;
                     tokio::time::sleep(Duration::from_secs(10)).await;
                 }
             });
@@ -65,6 +65,11 @@ struct ShardManagerContainer;
 
 impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
+}
+struct ShuttingDown;
+
+impl TypeMapKey for ShuttingDown {
+    type Value = AtomicBool;
 }
 
 #[tokio::main]
@@ -123,6 +128,7 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+        data.insert::<ShuttingDown>(AtomicBool::new(false)); // bot is not shutting down (if false)
     }
 
     if let Err(why) = client.start_shards(2).await {
