@@ -50,10 +50,11 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
                     // too lazy to import them just for this
                     let activity = serenity::model::gateway::Activity::playing("Shutting down...");
                     let status = serenity::model::prelude::OnlineStatus::DoNotDisturb;
-                    let fuck = Arc::new(ctx.clone());
+                    let fuck = Arc::new(ctx.clone()); // annoying but necessary pointer trickery since set_status() needs an Arc<Context>
                     let passed_context = Arc::clone(&fuck);
                     set_status(passed_context , activity, status).await;
                     
+                    // set shutting down flag. Doesn't need to be set back to false, since bot will inevitably shut down
                     data.get::<ShuttingDown>().unwrap().store(true, std::sync::atomic::Ordering::Relaxed);
 
                     manager.lock().await.shutdown_all().await;
