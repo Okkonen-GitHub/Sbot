@@ -149,3 +149,17 @@ pub async fn get_owners(token: &str) -> (HashSet<UserId>, UserId) {
     };
     return (owners, bot_id);
 }
+
+// removes prefix and possibly whitespace from the beginning of a string
+pub fn remove_prefix_from_message(message: &String, prefix: &str) -> String {
+    // big brain algorithm from copilot
+    
+    if message.starts_with(prefix) {
+        let message = message[prefix.len()..].to_string();
+        let message = message.trim_start();
+        message.to_string()
+    } else {
+        // should never happen
+        message.to_owned()
+    }
+}

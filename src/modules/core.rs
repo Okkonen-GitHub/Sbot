@@ -60,8 +60,7 @@ async fn betterping(ctx: &Context, msg: &Message) -> CommandResult {
     let latency = get_ping(ctx).await;
     let get_latency = {
         let now = Instant::now();
-        // `let _` to supress any errors. If they are a timeout, that will  be
-        // reflected in the plotted graph.
+        // `let _` to supress any errors.
         let _ = reqwest::get("https://discordapp.com/api/v6/gateway").await;
         now.elapsed().as_millis() as f64
     };
