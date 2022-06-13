@@ -13,7 +13,7 @@ pub struct Suggestion {
     pub submitter: String,
     pub suggestion: String,
     pub timestamp: String,
-    pub id: String,
+    pub id: u64,
     pub message_id: u64,
 }
 
@@ -35,7 +35,7 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
             // println!("{:?}", data);
             // unwrap hell
             let suggestion_channel = data.get("suggestion_channel").unwrap();
-            let suggestion_channel = ChannelId(suggestion_channel.as_str().unwrap().parse::<u64>().unwrap());
+            let suggestion_channel = ChannelId(suggestion_channel.as_u64().unwrap());
             
 
             let suggestion_id = (data["suggestions"].as_array().unwrap_or(&Vec::<Value>::new()).len() + 1) as u64;
@@ -69,7 +69,7 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
                     submitter: msg.author.name.clone(),
                     suggestion: suggestion_content.clone(),
                     timestamp: msg.timestamp.to_rfc3339(),
-                    id: suggestion_id.to_string(),
+                    id: suggestion_id,
                     message_id: added_suggestion.id.0
                 };
                 let suggestions = data["suggestions"].as_array_mut().unwrap();
@@ -141,7 +141,7 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     match data {
         Some(data) => {
             let suggestions = data["suggestions"].as_array().unwrap();
-            let mut suggestion = match suggestions.iter().find(|s| s["id"].as_str().unwrap() == suggestion_id.to_string()) {
+            let mut suggestion = match suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id) {
                 Some(s) => s.to_owned(),
                 None => {
                     msg.reply(ctx, "Suggestion not found").await?;
@@ -161,7 +161,7 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
 
             // edit the message in the suggestion channel
             let message_id = suggestion["message_id"].as_u64().unwrap();
-            let suggestion_channel = ChannelId(data.get("suggestion_channel").unwrap().as_str().unwrap().parse::<u64>().unwrap());
+            let suggestion_channel = ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
 
             suggestion_channel.edit_message(ctx, message_id, |m| {
                 m.embed(|e: &mut CreateEmbed| {
@@ -200,7 +200,7 @@ async fn set_suggestion_channel(ctx: &Context, msg: &Message) -> CommandResult {
             db.set(&guild_id.to_string(), guild_data).await;
         } else {
             let guild_data = serde_json::json!({
-                "suggestion_channel": channel.to_string(),
+                "suggestion_channel": channel.0, // should be a u64 for less unwraps. Will later just use the Guild struct to serialize this
                 "suggestions": [],
             });
             db.set(&guild_id.to_string(), guild_data).await;
