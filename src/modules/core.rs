@@ -13,7 +13,7 @@ use serenity::{
         Args, CommandGroup, CommandResult, HelpOptions,
     },
     model::{
-        channel::{Message},
+        channel::Message,
         id::UserId,
     },
     prelude::*,
@@ -95,7 +95,7 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     let latency = get_ping(ctx).await;
 
-    //TODO reply with an embed with the bot's latency, cpu usage, memory usage, uptime, rust version, serenity version, and the number of shards
+    //TODO rust version, serenity version, and the number of shards
 
     let sysinfo = get_sys(false).await;
 

@@ -26,15 +26,6 @@ struct Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-    // async fn message(&self, ctx: Context, msg: Message) {
-    //     if msg.content == "sping" {
-    //         println!("Shard {}", ctx.shard_id);
-
-    //         if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!").await {
-    //             println!("Error {:?}", why);
-    //         }
-    //     }
-    // }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         let guilds = match ready.user.guilds(ctx.clone()).await {
@@ -104,7 +95,6 @@ async fn main() {
             b
         });
         let path = get_pwd().join("data/");
-        println!("{:?}", &path);
         fs::File::open(path.join("guilds.json")).unwrap_or_else(|_| {
             println!("wtf");
             let mut b = fs::File::create(path.join("guilds.json")).unwrap();
