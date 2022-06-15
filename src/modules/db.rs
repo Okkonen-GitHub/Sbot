@@ -45,7 +45,7 @@ impl JsonDb {
             None
         }
     }
-
+    // need to fix `key` to accept any serde::Value or whatever can be used to index a json object.. but that's not that simple
     pub async fn set(&self, key: &str, value: serde_json::Value) {
         let file = fs::read_to_string(&self.path);
 
