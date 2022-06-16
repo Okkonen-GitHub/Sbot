@@ -116,7 +116,16 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .help(&C_HELP);
 
-    let mut client = Client::builder(token, GatewayIntents::default())
+    let intents = GatewayIntents::GUILDS |
+        GatewayIntents::GUILD_MESSAGES |
+        GatewayIntents::GUILD_MESSAGE_REACTIONS |
+        GatewayIntents::DIRECT_MESSAGES |
+        GatewayIntents::DIRECT_MESSAGE_REACTIONS |
+        GatewayIntents::MESSAGE_CONTENT |
+        GatewayIntents::GUILD_PRESENCES; // idk about this one
+        
+
+    let mut client = Client::builder(token, intents)
         .event_handler(Handler {
             activity_loop: AtomicBool::new(false),
         })

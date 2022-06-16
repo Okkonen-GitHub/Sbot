@@ -191,13 +191,41 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[aliases("suggestions")]
 async fn set_suggestion_channel(ctx: &Context, msg: &Message) -> CommandResult {
-    let channel = msg.channel_id;
+    // check if user has specified a channel (a channel id or a channel mention, too lazy to implement search by channel name)
+    // if not just use current channel
+
+    #[cfg(debug_assertions)]
+    let bot_prefix = "d";
+    #[cfg(not(debug_assertions))]
+    let bot_prefix = "s";
+
+    let no_prefix = remove_prefix_from_message(&msg.content, bot_prefix);
+    let channel = match no_prefix.split(" ").nth(1) {
+        Some(id) => match id.parse::<u64>() {
+            Ok(id) => ChannelId(id),
+            Err(_) => {
+                // here user has either mentioned a channel or has fucked up something
+                let id = id.trim_start_matches("<#").trim_end_matches(">"); // remove <# and >, leaving only numbers if it is a channel mention
+                match id.parse::<u64>() {
+                    Ok(id) => ChannelId(id),
+                    Err(_) => {
+                        msg.reply(ctx, "Invalid channel id").await?;
+                        return Ok(());
+                    }
+                }
+            }
+        },
+        None => {
+            msg.channel_id
+        }
+    };
+
 
     if let Some(guild_id) = msg.guild_id {
         let path = get_pwd().join("data/guilds.json");
         let db = JsonDb::new(path);
         if let Some(mut guild_data) = db.get(&guild_id.to_string()).await {
-            guild_data["suggestion_channel"] = serde_json::Value::String(channel.to_string());
+            guild_data["suggestion_channel"] = serde_json::json!(channel.0);
             db.set(&guild_id.to_string(), guild_data).await;
         } else {
             let guild_data = serde_json::json!({
