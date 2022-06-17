@@ -3,14 +3,14 @@ use serde_json::Value;
 use serenity::{
     client::Context,
     framework::standard::{macros::command, CommandResult},
-    model::{channel::Message, id::ChannelId}, builder::{CreateEmbed, CreateMessage, CreateEmbedAuthor},
+    model::{channel::Message, id::{ChannelId, MessageId}}, builder::{CreateEmbed, CreateMessage, CreateEmbedAuthor},
 };
 use super::db::*;
 use super::utils::{get_pwd, remove_prefix_from_message};
 
 #[derive(Serialize, Deserialize)]
 pub struct Suggestion {
-    pub submitter: String,
+    pub submitter_id: u64,
     pub suggestion: String,
     pub timestamp: String,
     pub id: u64,
@@ -37,8 +37,16 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
             let suggestion_channel = data.get("suggestion_channel").unwrap();
             let suggestion_channel = ChannelId(suggestion_channel.as_u64().unwrap());
             
+            // to avoid duplicates
+            let mut suggestion_id = 0;
+            for suggestion in data["suggestions"].as_array().unwrap() {
+                let current = suggestion["id"].as_u64().unwrap();
+                if current > suggestion_id {
+                    suggestion_id = current;
+                }
+            }
+            suggestion_id += 1; // add one to the current highest id
 
-            let suggestion_id = (data["suggestions"].as_array().unwrap_or(&Vec::<Value>::new()).len() + 1) as u64;
             #[cfg(debug_assertions)]
             let bot_prefix = "d";
             #[cfg(not(debug_assertions))]
@@ -65,7 +73,7 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
             {
                 // save to db
                 let suggestion = Suggestion {
-                    submitter: msg.author.name.clone(),
+                    submitter_id: msg.author.id.0,
                     suggestion: suggestion_content.clone(),
                     timestamp: msg.timestamp.to_rfc3339(),
                     id: suggestion_id,
@@ -95,6 +103,69 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
     }
 
     
+    Ok(())
+}
+
+#[command]
+#[aliases("removesuggestion", "rs", "deletesuggestion", "remove", "delete", "ds")]
+async fn remove_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
+    // check if used in a guild
+    let guild_id = match msg.guild_id {
+        Some(id) => id.0,
+        None => {
+            msg.reply(ctx, "You must be in a server to use this command.").await?;
+            return Ok(());
+        }
+    };
+    // get the suggestion id
+    #[cfg(debug_assertions)]
+    let bot_prefix = "d";
+    #[cfg(not(debug_assertions))]
+    let bot_prefix = "s";
+    let no_prefix = remove_prefix_from_message(&msg.content, bot_prefix);
+    let suggestion_id = match no_prefix.split(" ").nth(1).unwrap().parse::<u64>() {
+        Ok(id) => id,
+        Err(_) => {
+            msg.reply(ctx, "Invalid suggestion id").await?;
+            return Ok(());
+        }
+    };
+    // check if the user is the same as the original submitter
+    let db = JsonDb::new(get_pwd().join("data/guilds.json"));
+    let data = db.get(&guild_id.to_string()).await;
+    match data {
+        Some(data) => {
+            let mut suggestions = data["suggestions"].as_array().unwrap().to_owned();
+            let suggestion = suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id);
+            match suggestion {
+                Some(suggestion) => {
+                    if suggestion["submitter_id"].as_u64().unwrap() == msg.author.id.0 {
+                        // then delete the suggestion message
+                        let suggestion_channel = ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
+                        let msg_id = MessageId(suggestion["message_id"].as_u64().unwrap());
+                        suggestion_channel.delete_message(ctx, msg_id).await?;
+
+                        // remove the suggestion from the db
+                        let index = suggestions.iter().position(|s| s["id"].as_u64().unwrap() == suggestion_id).unwrap();
+                        suggestions.remove(index);
+                        let new_data = serde_json::json!({
+                            "suggestion_channel": suggestion_channel.0,
+                            "suggestions": suggestions
+                        });
+                        db.set(&guild_id.to_string(), new_data).await;
+                        msg.reply(ctx, "Suggestion removed").await?;
+                    }
+                }
+                None => {
+                    msg.reply(ctx, "Invalid suggestion id").await?;
+                }
+            }
+        },
+        None => {
+            msg.reply(ctx, "No previous suggesions").await?;
+            return Ok(());
+        }
+    }
     Ok(())
 }
 
@@ -148,7 +219,7 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
                 }
             };
             // check if the submitter is the same as the author of the message
-            if suggestion["submitter"].as_str().unwrap() != msg.author.name {
+            if suggestion["submitter_id"].as_u64().unwrap() != msg.author.id.0 {
                 msg.reply(ctx, "You can only edit your own suggestions.").await?;
                 return Ok(());
             }
@@ -185,6 +256,81 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+
+//TODO only server admins should be able to use this command
+//TODO implement checks: #[check(Admin)] or #[admin_only]
+// Almost fully made by copilot but pretty basic - just slightly different to edit_suggestion
+#[command]
+#[aliases("acceptsuggestion", "as", "accept")]
+async fn accept_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
+    // check if command was used in a guild
+    let guild_id = match msg.guild_id {
+        Some(id) => id.0,
+        None => {
+            msg.reply(ctx, "You must be in a server to use this command.").await?;
+            return Ok(());
+        }
+    };
+    // get the suggestion id from the message
+    #[cfg(debug_assertions)]
+    let bot_prefix = "d";
+    #[cfg(not(debug_assertions))]
+    let bot_prefix = "s";
+
+    let no_prefix = remove_prefix_from_message(&msg.content, bot_prefix);
+    let suggestion_id = match no_prefix.split(" ").nth(1) {
+        Some(id) => match id.parse::<u64>() {
+            Ok(id) => id,
+            Err(_) => {
+                msg.reply(ctx, "Invalid suggestion id (must be a number)").await?;
+                return Ok(());
+            }
+        },
+        None => {
+            msg.reply(ctx, "You must specify a suggestion id.").await?;
+            return Ok(());
+        }
+    };
+    // get the message id
+    let db = JsonDb::new(get_pwd().join("data/guilds.json"));
+    let data = db.get(&guild_id.to_string()).await;
+    match data {
+        Some(data) => {
+            let suggestions = data["suggestions"].as_array().unwrap();
+            match suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id) {
+                Some(s) => {
+                    let suggestion = s.to_owned();
+                    // edit the message in the suggestion channel
+                    let channel_id = ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
+                    let message_id = suggestion["message_id"].as_u64().unwrap();
+                    channel_id.edit_message(ctx, message_id, |m| {
+                        m.embed(|e: &mut CreateEmbed| {
+                            e.title(format!("Suggestion #{} (accepted)", suggestion_id))
+                            .description(format!("{}", suggestion["suggestion"].as_str().unwrap()))
+                            .timestamp(msg.timestamp)
+                            .author(|a: &mut CreateEmbedAuthor| {
+                                a.name(msg.author.name.clone())
+                                .icon_url(msg.author.avatar_url().unwrap_or("".to_string()))
+                            });
+                            e
+                        });
+                        m
+                    }).await?;
+                    // idc to add some accepted boolean to the database
+                },
+                None => {
+                    msg.reply(ctx, "Suggestion not found").await?;
+                    return Ok(());
+                }
+            };
+        },
+        None => {
+            msg.reply(ctx, "No suggestions in this guild from before").await?;
+            return Ok(());
+        }
+    }
+    Ok(())
+}
 
 //TODO only server admins should be able to use this command
 //TODO implement checks: #[check(Admin)] or #[admin_only]
