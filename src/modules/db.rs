@@ -10,13 +10,12 @@ use super::suggestions::Suggestion;
 struct Guild {
     suggestions: Vec<Suggestion>,
     suggestion_channel: u64,
-    // welcome_channel: u64,
+    welcome_channel: u64,
     // prefix: String,
 
     // muted_role: Option<u64>,
     // muted_role_name: Option<String>, // coming later
 
-    id: u64,
 }
 
 #[cfg(debug_assertions)]
