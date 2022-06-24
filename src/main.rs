@@ -10,12 +10,12 @@ use serenity::{
     async_trait,
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::group, StandardFramework},
-    model::gateway::Ready,
+    model::{gateway::Ready, guild::Member},
 };
 use tokio::sync::Mutex;
 
 //TODO! add commands to a group, this means you Okkonen!!!!
-//TODO: Add more groups (suggestions, misc, owner, moderation, etc)
+//TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
 #[group]
 #[commands(ping, about, info, quit, uptime, fullinfo, betterping, suggest, set_suggestion_channel, edit_suggestion, accept_suggestion, remove_suggestion, set_welcome_channel)]
 struct General;
@@ -50,6 +50,13 @@ impl EventHandler for Handler {
         }
         self.activity_loop.swap(true, Ordering::Relaxed);
         
+    }
+    // we have to have this in the same impl block (only 1 event handler can exist)
+    // so I just call into a different funtion in welcome.rs to handle all the logic
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) -> () {
+        // println!("wtf am I doing...");
+        // dbg!(&new_member);
+        say_hello(&ctx, &new_member).await;
     }
 }
 
@@ -122,6 +129,7 @@ async fn main() {
         GatewayIntents::DIRECT_MESSAGES |
         GatewayIntents::DIRECT_MESSAGE_REACTIONS |
         GatewayIntents::MESSAGE_CONTENT |
+        GatewayIntents::GUILD_MEMBERS |
         GatewayIntents::GUILD_PRESENCES; // idk about this one
         
 
