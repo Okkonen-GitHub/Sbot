@@ -15,6 +15,7 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
             let welcome_channel = data["welcome_channel"].as_u64();
             if let Some(welcome_channel) = welcome_channel {
                 // todo: custom welcome messages.
+                // check if there is a custom message, otherwise use default
                 let content = format!("Welcome to {}, {}", guild_id.name(ctx).unwrap_or("?".to_string()), member.user.name);
                 // use `let _` to ignore any errors. 
                 let _ = ChannelId(welcome_channel).say(ctx, content).await;
@@ -26,8 +27,58 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
     }
 }
 
+
+// <prefix> setwelcomemessage Welcome to {guild_name}, {user_name}!
+// custom message components are {user_tag}, {user_name}, {guild_name}. Maybe more some day (never)
 #[command]
-#[aliases("welcomechannel")]
+#[aliases("welcomemessage", "setwelcomemsg", "setwelcomemessage", "sms")]
+async fn set_welcome_message(ctx: &Context, msg: &Message) -> CommandResult {
+    let db = JsonDb::new(get_pwd().join("data/guilds.json"));
+    let guild_id = match msg.guild_id {
+        Some(id) => id,
+        None => {
+            msg.channel_id.say(&ctx.http, "This command can only be used in a server.").await?;
+            return Ok(());
+        }
+    };
+    
+    // remove prefix
+    #[cfg(debug_assertions)]
+    let prefix = "d";
+    #[cfg(not(debug_assertions))]
+    let prefix = "s";
+
+    let no_prefix = remove_prefix_from_message(&msg.content, prefix);
+    let welcome_message = no_prefix.split(" ").skip(1).collect::<Vec<&str>>().join(" ");
+    match db.get(&guild_id.to_string()).await {
+        Some(data) => {
+            // edit the previous welcome message
+            let new_data = serde_json::json!({
+                "suggestion_channel": data["suggestion_channel"],
+                "suggestions": data["suggestions"],
+                "welcome_channel": data["welcome_channel"],
+                "welcome_message": welcome_message,
+            });
+            db.set(&guild_id.to_string(), new_data).await;
+            msg.reply(ctx, "Welcome message updated.").await?;
+        },
+        None => {
+            let new_data = serde_json::json!({
+                "suggestion_channel": None::<u64>,
+                "suggestions": Vec::<Suggestion>::new(),
+                "welcome_channel": None::<u64>,
+                "welcome_message": welcome_message,
+            });
+            db.set(&guild_id.to_string(), new_data).await;
+            msg.reply(ctx, "Welcome message set, now you should set a welcome channel (`setwelcomechannel`)").await?;
+        }
+    }
+    
+    Ok(())
+}
+
+#[command]
+#[aliases("welcomechannel", "setwelcomechannel", "smc")]
 async fn set_welcome_channel(ctx: &Context, msg: &Message) -> CommandResult {
     let db = JsonDb::new(get_pwd().join("data/guilds.json"));
     let guild_id = match msg.guild_id {
@@ -73,6 +124,7 @@ async fn set_welcome_channel(ctx: &Context, msg: &Message) -> CommandResult {
                 "suggestion_channel": data["suggestion_channel"], // might be None, should be fine. same for suggestions
                 "suggestions": data["suggestions"],
                 "welcome_channel": channel.0,
+                "welcome_message": data["welcome_message"]
             });
             db.set(&guild_id.0.to_string(), new_data).await;
             msg.channel_id.say(&ctx.http, &format!("Welcome channel set to {}", channel)).await?;
@@ -83,6 +135,7 @@ async fn set_welcome_channel(ctx: &Context, msg: &Message) -> CommandResult {
                 "suggestion_channel": None::<u64>, 
                 "suggestions": None::<Vec<Suggestion>>,
                 "welcome_channel": channel.0,
+                "welcome_message": None::<String>
             });
             db.set(&guild_id.0.to_string(), new_data).await;
             msg.channel_id.say(&ctx.http, &format!("Welcome channel set to {}", channel)).await?;

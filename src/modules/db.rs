@@ -1,7 +1,6 @@
 
 use std::{fs, path::PathBuf};
 
-#[cfg(debug_assertions)]
 use serde_json;
 
 
@@ -18,12 +17,10 @@ struct Guild {
 
 }
 
-#[cfg(debug_assertions)]
 pub struct JsonDb {
     path: PathBuf,
 }
 
-#[cfg(debug_assertions)]
 impl JsonDb {
     pub fn new(path: PathBuf) -> Self {
         JsonDb { path }
