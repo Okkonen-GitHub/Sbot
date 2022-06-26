@@ -39,7 +39,7 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
             
             // to avoid duplicates
             let mut suggestion_id = 0;
-            for suggestion in data["suggestions"].as_array().unwrap() {
+            for suggestion in data["suggestions"].as_array().unwrap_or(&Vec::<Value>::new()) {
                 let current = suggestion["id"].as_u64().unwrap();
                 if current > suggestion_id {
                     suggestion_id = current;
@@ -79,9 +79,18 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
                     id: suggestion_id,
                     message_id: added_suggestion.id.0
                 };
-                let suggestions = data["suggestions"].as_array_mut().unwrap();
-                suggestions.push(serde_json::to_value(suggestion).unwrap());
-                db.set(&guild_id.to_string(), data).await;
+                if let Some(suggestions) = data["suggestions"].as_array_mut() {
+                    suggestions.push(serde_json::to_value(suggestion).unwrap());
+                    db.set(&guild_id.to_string(), data).await;
+                } else {
+                    let suggestions = vec![serde_json::to_value(suggestion).unwrap()];
+                    let new_data = serde_json::json!({
+                        "welcome_channel": data["welcome_channel"],
+                        "suggestion_channel": data["suggestion_channel"],
+                        "suggestions": suggestions
+                    });
+                    db.set(&guild_id.to_string(), new_data).await;
+                }
             }
 
             // why does this all work?
