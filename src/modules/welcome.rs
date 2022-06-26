@@ -6,6 +6,7 @@ use serenity::{
 };
 
 // this could probably be inlined (#[inline(always)]) because it is only used in one place
+// too lasy to make the message embedded
 pub async fn say_hello(ctx: &Context, member: &Member) {
     let guild_id = member.guild_id;
     // get the welcome channel, if any, then send a welcome message there, otherwise do nothing
@@ -14,9 +15,18 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
         Some(data) => {
             let welcome_channel = data["welcome_channel"].as_u64();
             if let Some(welcome_channel) = welcome_channel {
-                // todo: custom welcome messages.
                 // check if there is a custom message, otherwise use default
-                let content = format!("Welcome to {}, {}", guild_id.name(ctx).unwrap_or("?".to_string()), member.user.name);
+                let content = if let Some(welcome_msg) = data["welcome_message"].as_str() {
+                    // custom message components are {user_tag}, {user_name}, {guild_name}. Maybe more some day (never)
+                    // so we just .replace them in the string
+                    welcome_msg.to_owned()
+                        .replace("{guild_name}", &guild_id.name(ctx).unwrap_or("?".to_owned()))
+                        .replace("{user_name}", &member.user.name)
+                        .replace("{user_tag}", &member.user.tag())
+                        // pretty easy to add more
+                } else {
+                    format!("Welcome to {}, {}", guild_id.name(ctx).unwrap_or("?".to_string()), member.user.name)
+                };
                 // use `let _` to ignore any errors. 
                 let _ = ChannelId(welcome_channel).say(ctx, content).await;
             } // if welcome channel is not set then we don't need to do anything
