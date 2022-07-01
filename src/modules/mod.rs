@@ -8,4 +8,6 @@ pub mod activities;
 pub mod suggestions;
 pub mod welcome;
 
+pub mod checks;
+
 mod tests;
