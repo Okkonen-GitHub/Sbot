@@ -1,23 +1,26 @@
-use std::{collections::{HashMap, HashSet}, path::PathBuf, env};
+use std::{
+    collections::{HashMap, HashSet},
+    env,
+    path::PathBuf,
+};
 // use serenity::builder::{CreateMessage, CreateEmbed};
 use crate::ShardManagerContainer;
 
 use serenity::{
+    client::{bridge::gateway::ShardId, Context},
     http::Http,
     model::id::UserId,
-    client::{bridge::gateway::ShardId, Context},
 };
 
-use sysinfo::{System, SystemExt, ProcessorExt, ProcessExt};
-
+use sysinfo::{ProcessExt, ProcessorExt, System, SystemExt};
 
 pub fn bytes_to_human(mut bytes: u64) -> String {
-
-    let symbols: [char; 8] = ['K','M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
+    let symbols: [char; 8] = ['K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
 
     let mut i = 0;
 
-    while bytes >= 1024 { // could use a bitsift here but too lazy to do that
+    while bytes >= 1024 {
+        // could use a bitsift here but too lazy to do that
         bytes /= 1024;
         i += 1;
     }
@@ -27,14 +30,13 @@ pub fn bytes_to_human(mut bytes: u64) -> String {
 }
 
 pub fn seconds_to_human(mut secs: u64) -> String {
-    
-    let mut hours= 0;
+    let mut hours = 0;
     let mut mins = 0;
-    let mut days= 0;
+    let mut days = 0;
 
     while secs >= 86400 {
-        days +=1;
-        secs -=86400;
+        days += 1;
+        secs -= 86400;
     }
 
     while secs >= 3600 {
@@ -87,28 +89,35 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     let mut sys = System::new_all();
 
     sys.refresh_all();
-    
+
     let mut sys_info: HashMap<&str, String> = HashMap::new();
 
-    sys_info.insert("memory_usage", format!(
-        "{}B / {}B ({:.1}%)",
-        bytes_to_human(sys.used_memory()),
-        bytes_to_human(sys.total_memory()),
-        sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
-    ));
-    
+    sys_info.insert(
+        "memory_usage",
+        format!(
+            "{}B / {}B ({:.1}%)",
+            bytes_to_human(sys.used_memory()),
+            bytes_to_human(sys.total_memory()),
+            sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
+        ),
+    );
+
     // full system information (see full info command)
     if full {
         let mut cpu_usage = Vec::new();
         for core in sys.processors() {
-            cpu_usage.push(core.cpu_usage())     
+            cpu_usage.push(core.cpu_usage())
         }
-        sys_info.insert("os_info", sys.long_os_version().unwrap_or(String::from("?")));
+        sys_info.insert(
+            "os_info",
+            sys.long_os_version().unwrap_or(String::from("?")),
+        );
 
         sys_info.insert("thread_count", format!("{}", sys.processors().len()));
 
         // big brain functional programming
-        let cpu_usage_str = String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
+        let cpu_usage_str =
+            String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
         sys_info.insert("cpu_usage", cpu_usage_str);
     }
 

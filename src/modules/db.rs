@@ -1,8 +1,6 @@
-
 use std::{fs, path::PathBuf};
 
 use serde_json;
-
 
 use super::suggestions::Suggestion;
 

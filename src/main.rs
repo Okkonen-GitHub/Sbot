@@ -1,10 +1,17 @@
 mod modules;
 
-use crate::modules::{core::*, owner::*, utils::*, activities::*, suggestions::*, welcome::*};
-use crate::modules::checks::*; // temporary
+use crate::modules::checks::*;
+use crate::modules::{activities::*, core::*, owner::*, suggestions::*, utils::*, welcome::*}; // temporary
 
-use std::{env, fs, io::Write, sync::{atomic::{AtomicBool, Ordering}, Arc }, time::Duration};
-
+use std::{
+    env, fs,
+    io::Write,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use serenity::prelude::*;
 use serenity::{
@@ -18,7 +25,23 @@ use tokio::sync::Mutex;
 //TODO! add commands to a group, this means you Okkonen!!!!
 //TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
 #[group]
-#[commands(ping, about, info, quit, uptime, fullinfo, betterping, suggest, set_suggestion_channel, edit_suggestion, accept_suggestion, remove_suggestion, set_welcome_channel, set_welcome_message, testadmin)]
+#[commands(
+    ping,
+    about,
+    info,
+    quit,
+    uptime,
+    fullinfo,
+    betterping,
+    suggest,
+    set_suggestion_channel,
+    edit_suggestion,
+    accept_suggestion,
+    remove_suggestion,
+    set_welcome_channel,
+    set_welcome_message,
+    testadmin
+)]
 struct General;
 
 struct Handler {
@@ -27,7 +50,6 @@ struct Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-
     async fn ready(&self, ctx: Context, ready: Ready) {
         let guilds = match ready.user.guilds(ctx.clone()).await {
             Ok(v) => v.len().to_string(),
@@ -50,7 +72,6 @@ impl EventHandler for Handler {
             });
         }
         self.activity_loop.swap(true, Ordering::Relaxed);
-        
     }
     // we have to have this in the same impl block (only 1 event handler can exist)
     // so I just call into a different funtion in welcome.rs to handle all the logic
@@ -75,7 +96,7 @@ impl TypeMapKey for ShuttingDown {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to load .env");
-    
+
     let token: String;
     let prefix: &str;
 
@@ -83,7 +104,8 @@ async fn main() {
         println!("Running in release mode");
         token = env::var("DISCORD_TOKEN").expect("token");
         prefix = "s";
-    } else { // development mode
+    } else {
+        // development mode
         token = env::var("DEV_TOKEN").expect("token");
         prefix = "d"; // d for now...
     }
@@ -124,15 +146,14 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .help(&C_HELP);
 
-    let intents = GatewayIntents::GUILDS |
-        GatewayIntents::GUILD_MESSAGES |
-        GatewayIntents::GUILD_MESSAGE_REACTIONS |
-        GatewayIntents::DIRECT_MESSAGES |
-        GatewayIntents::DIRECT_MESSAGE_REACTIONS |
-        GatewayIntents::MESSAGE_CONTENT |
-        GatewayIntents::GUILD_MEMBERS |
-        GatewayIntents::GUILD_PRESENCES; // idk about this one
-        
+    let intents = GatewayIntents::GUILDS
+        | GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::DIRECT_MESSAGE_REACTIONS
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILD_MEMBERS
+        | GatewayIntents::GUILD_PRESENCES; // idk about this one
 
     let mut client = Client::builder(token, intents)
         .event_handler(Handler {

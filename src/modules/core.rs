@@ -1,9 +1,9 @@
 use std::{collections::HashSet, time::Instant};
 
-use crate::modules::utils::*;
 use super::db::*;
+use crate::modules::utils::*;
 #[cfg(debug_assertions)]
-use serde_json::{json};
+use serde_json::json;
 
 use serenity::{
     builder::{CreateEmbed, CreateMessage},
@@ -12,10 +12,7 @@ use serenity::{
         macros::{command, help},
         Args, CommandGroup, CommandResult, HelpOptions,
     },
-    model::{
-        channel::Message,
-        id::UserId,
-    },
+    model::{channel::Message, id::UserId},
     prelude::*,
 };
 
@@ -65,16 +62,17 @@ async fn betterping(ctx: &Context, msg: &Message) -> CommandResult {
         now.elapsed().as_millis() as f64
     };
     // "Websocket latency: 121 ms"
-    let latency = format!("Websocket latency: {}\nGET latency: {} ms", latency, get_latency);
+    let latency = format!(
+        "Websocket latency: {}\nGET latency: {} ms",
+        latency, get_latency
+    );
     let duration = Instant::now();
     let mut message = msg.reply(ctx, &latency).await?;
     let elapsed = duration.elapsed().as_millis();
 
     let post_latency = format!("POST latency: {} ms", elapsed);
     let full_latency = format!("{}\n{}", latency, post_latency);
-    message.edit(&ctx, |m| {
-        m.content(full_latency)
-    }).await?;
+    message.edit(&ctx, |m| m.content(full_latency)).await?;
 
     Ok(())
 }
@@ -102,7 +100,7 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
     // let cpu_usage = sysinfo.get("cpu_usage").unwrap();
     let memory_usage = sysinfo.get("memory_usage").unwrap();
     let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
-    
+
     let user = ctx.cache.current_user(); // for the profile pic in the embed
 
     let guilds = ctx.cache.guilds().len();
@@ -138,17 +136,15 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[aliases("inful", "infofull")]
 async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
-
     const BOT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
     let latency = get_ping(ctx).await;
-
 
     let sysinfo = get_sys(true).await;
 
     let memory_usage = sysinfo.get("memory_usage").unwrap();
     let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
-    
+
     let user = ctx.cache.current_user(); // for the profile pic in the embed
 
     let cpu_usage = sysinfo.get("cpu_usage").unwrap();
@@ -190,12 +186,11 @@ async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
 #[cfg(debug_assertions)]
 #[command]
 async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    
     let num = &args.single::<f64>()?;
     let path = get_pwd().join("data/data.json");
     let db = JsonDb::new(path);
     db.set(&format!("num{}", num), json!(num)).await;
-    
+
     msg.reply(ctx, "Added to the db").await?;
     Ok(())
 }
@@ -203,13 +198,12 @@ async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[cfg(debug_assertions)]
 #[command]
 async fn getnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    
     let num = &args.single::<f64>()?;
     let path = get_pwd().join("data/data.json");
     let db = JsonDb::new(path);
     let val = db.get(&format!("num{}", num)).await;
     msg.reply(ctx, format!("{}", val.unwrap())).await?;
-    
+
     Ok(())
 }
 
