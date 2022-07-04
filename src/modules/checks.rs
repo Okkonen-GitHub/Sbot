@@ -7,7 +7,7 @@ use serenity::{
     model::channel::Message,
 };
 
-#[command]
+#[command] // gonna remove this soon but not now
 #[checks(Admin)]
 async fn testadmin(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(ctx, "You have admin perms").await?;

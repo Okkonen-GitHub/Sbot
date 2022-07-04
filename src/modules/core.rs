@@ -1,9 +1,6 @@
 use std::{collections::HashSet, time::Instant};
 
-use super::db::*;
 use crate::modules::utils::*;
-#[cfg(debug_assertions)]
-use serde_json::json;
 
 use serenity::{
     builder::{CreateEmbed, CreateMessage},
@@ -179,41 +176,6 @@ async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
             m
         })
         .await?;
-
-    Ok(())
-}
-
-#[cfg(debug_assertions)]
-#[command]
-async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let num = &args.single::<f64>()?;
-    let path = get_pwd().join("data/data.json");
-    let db = JsonDb::new(path);
-    db.set(&format!("num{}", num), json!(num)).await;
-
-    msg.reply(ctx, "Added to the db").await?;
-    Ok(())
-}
-
-#[cfg(debug_assertions)]
-#[command]
-async fn getnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let num = &args.single::<f64>()?;
-    let path = get_pwd().join("data/data.json");
-    let db = JsonDb::new(path);
-    let val = db.get(&format!("num{}", num)).await;
-    msg.reply(ctx, format!("{}", val.unwrap())).await?;
-
-    Ok(())
-}
-
-#[cfg(debug_assertions)]
-#[command]
-async fn getall(ctx: &Context, msg: &Message) -> CommandResult {
-    let path = get_pwd().join("data/data.json");
-    let db = JsonDb::new(path);
-    let val = db.get_all().await;
-    msg.reply(ctx, format!("{:?}", val.unwrap())).await?;
 
     Ok(())
 }
