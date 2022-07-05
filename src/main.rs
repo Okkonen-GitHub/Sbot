@@ -13,6 +13,7 @@ use std::{
     time::Duration,
 };
 
+use serenity::model::id::GuildId;
 use serenity::prelude::*;
 use serenity::{
     async_trait,
@@ -21,6 +22,8 @@ use serenity::{
     model::{gateway::Ready, guild::Member},
 };
 use tokio::sync::Mutex;
+
+use songbird::SerenityInit;
 
 //TODO! add commands to a group, this means you Okkonen!!!!
 //TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
@@ -75,9 +78,7 @@ impl EventHandler for Handler {
     }
     // we have to have this in the same impl block (only 1 event handler can exist)
     // so I just call into a different funtion in welcome.rs to handle all the logic
-    async fn guild_member_addition(&self, ctx: Context, new_member: Member) -> () {
-        // println!("wtf am I doing...");
-        // dbg!(&new_member);
+    async fn guild_member_addition(&self, ctx: Context, _guild_id: GuildId, new_member: Member) -> () {
         say_hello(&ctx, &new_member).await;
     }
 }
@@ -134,7 +135,10 @@ async fn main() {
     }
     let (owners, bot_id) = get_owners(&token).await;
 
-    // println!("{:?}", owners);
+    //*  Music stuff init
+    // tracing_subscriber::fmt::init();
+
+
     let framework = StandardFramework::new()
         .configure(|c| {
             c.prefix(prefix)
@@ -146,20 +150,21 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .help(&C_HELP);
 
-    let intents = GatewayIntents::GUILDS
-        | GatewayIntents::GUILD_MESSAGES
-        | GatewayIntents::GUILD_MESSAGE_REACTIONS
-        | GatewayIntents::DIRECT_MESSAGES
-        | GatewayIntents::DIRECT_MESSAGE_REACTIONS
-        | GatewayIntents::MESSAGE_CONTENT
-        | GatewayIntents::GUILD_MEMBERS
-        | GatewayIntents::GUILD_PRESENCES; // idk about this one
+    // let intents = GatewayIntents::GUILDS
+    //     | GatewayIntents::GUILD_MESSAGES
+    //     | GatewayIntents::GUILD_MESSAGE_REACTIONS
+    //     | GatewayIntents::DIRECT_MESSAGES
+    //     | GatewayIntents::DIRECT_MESSAGE_REACTIONS
+    //     | GatewayIntents::MESSAGE_CONTENT
+    //     | GatewayIntents::GUILD_MEMBERS
+    //     | GatewayIntents::GUILD_PRESENCES; // idk about this one
 
-    let mut client = Client::builder(token, intents)
+    let mut client = Client::builder(token)
         .event_handler(Handler {
             activity_loop: AtomicBool::new(false),
         })
         .framework(framework)
+        .register_songbird()
         .await
         .expect("Error creating the client");
 

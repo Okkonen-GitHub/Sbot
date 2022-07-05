@@ -19,7 +19,7 @@ async fn testadmin(ctx: &Context, msg: &Message) -> CommandResult {
 async fn admin_check(ctx: &Context, msg: &Message, _args: &mut Args) -> Result<(), Reason> {
     let member = msg.member(ctx).await;
     if let Ok(member) = member {
-        let perms = member.permissions(ctx);
+        let perms = member.permissions(ctx).await;
         if let Ok(perms) = perms {
             if perms.administrator() {
                 return Ok(());
