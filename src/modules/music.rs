@@ -3,8 +3,12 @@ use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
 };
-use songbird::input::Restartable; // for looping and yt searches (first result) (Restartable::*)
 
+use super::utils::remove_prefix_from_message;
+
+use std::sync::Arc;
+use songbird::{input::Restartable, Call}; // for looping and yt searches (first result) (Restartable::*)
+use tokio::sync::Mutex;
 #[command]
 #[only_in(guilds)]
 async fn join(ctx: &Context, msg: &Message) -> CommandResult {
@@ -103,51 +107,75 @@ async fn deafen(ctx: &Context, msg: &Message) -> CommandResult {
     }
     Ok(())
 }
+#[inline(always)]
+async fn add_to_queue_url(url: String, handler: Arc<Mutex<Call>>, msg: &Message, ctx: &Context) -> CommandResult {
+    let mut lock = handler.lock().await;
+    let source = match Restartable::ytdl(url, true).await {
+        Ok(source) => source.into(),
+        Err(why) => {
+            println!("Err starting source: {:?}", why);
+
+            msg.reply(&ctx.http, "Error sourcing ffmpeg").await?;
+            return Ok(());
+        }
+    };
+    lock.enqueue_source(source);
+    Ok(())
+}
+
+#[inline(always)]
+async fn add_to_queue_search(search: String, handler: Arc<Mutex<Call>>, msg: &Message, ctx: &Context) -> CommandResult {
+    let mut lock = handler.lock().await;
+    let source = match Restartable::ytdl_search(search, true).await {
+        Ok(source) => source.into(),
+        Err(why) => {
+            msg.reply(&ctx.http, format!("Error sourcing ffmpeg: {why}")).await?;
+            return Ok(())
+        }
+    };
+    lock.enqueue_source(source);
+    Ok(())
+}
 
 #[command]
 #[only_in(guilds)]
 #[aliases("p")]
-async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    //TODO Add queue, stop, pause, resume (unpause), looping
-
-    let url = match args.single::<String>() {
-        Ok(url) => url,
-        Err(_) => {
-            msg.reply(ctx, "Must provide an URL to a video or audio")
-                .await?;
-            return Ok(()); // maybe at some point impl pause and this would just unpause or say above (if not paused)
-        }
-    };
-    if !url.starts_with("http") {
-        msg.reply(
-            ctx,
-            "Doesn't look like a valid URL (use `https://youtube.com` instead of `youtube.com`)",
-        )
-        .await?;
-        return Ok(());
-    }
+async fn play(ctx: &Context, msg: &Message) -> CommandResult {
+    
     let guild = msg.guild(&ctx.cache).await.unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
 
+    #[cfg(debug_assertions)]
+    let prefix = "d";
+    #[cfg(not(debug_assertions))]
+    let prefix = "s";
+
+    let mut no_prefix = remove_prefix_from_message(&msg.content, prefix);
+    let use_url = match no_prefix.split(" ").nth(1) {
+        Some(possibly_url) => {
+            let temp = possibly_url.starts_with("http");
+            no_prefix = no_prefix.split(" ").skip(1).collect::<Vec<&str>>().join(" ");
+            temp
+        },
+        None => {
+            msg.reply(ctx, "You need to specify a song (a youtube search or link)").await?;
+            return Ok(())
+        }
+    };
+
+
+
     if let Some(handler_lock) = manager.get(guild.id) {
-        let mut handler = handler_lock.lock().await;
+        if use_url {
+            add_to_queue_url(no_prefix, handler_lock, msg, ctx).await?;
+        } else {
+            add_to_queue_search(no_prefix, handler_lock, msg, ctx).await?;
+        }
 
-        let source = match Restartable::ytdl(url, true).await {
-            Ok(source) => source.into(),
-            Err(why) => {
-                println!("Err starting source: {:?}", why);
-
-                msg.reply(&ctx.http, "Error sourcing ffmpeg").await?;
-
-                return Ok(());
-            }
-        };
-        handler.enqueue_source(source);
-
-        msg.reply(&ctx.http, "Playing song").await?;
+        msg.reply(&ctx.http, "Added song to queue.").await?;
     } else {
         let channel_id = guild
             .voice_states
@@ -161,25 +189,14 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 return Ok(());
             }
         };
-        let manager = songbird::get(ctx)
-            .await
-            .expect("Songbird voice client placed in at initialisation")
-            .clone();
         let handler = manager.join(guild.id, connect_to).await.0;
-        let mut lock = handler.lock().await;
-        let source = match Restartable::ytdl(url, true).await {
-            Ok(source) => source.into(),
-            Err(why) => {
-                println!("Err starting source: {:?}", why);
+        if use_url {
+            add_to_queue_url(no_prefix, handler, msg, ctx).await?;
+        } else {
+            add_to_queue_search(no_prefix, handler, msg, ctx).await?;
+        }
 
-                msg.reply(&ctx.http, "Error sourcing ffmpeg").await?;
-
-                return Ok(());
-            }
-        };
-        lock.enqueue_source(source);
-
-        msg.reply(&ctx.http, "Playing song").await?;
+        msg.reply(&ctx.http, "Added song to queue.").await?;
     }
 
     Ok(())
@@ -227,6 +244,7 @@ async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
 
     Ok(())
 }
+
 #[command]
 #[only_in(guilds)]
 async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
@@ -235,6 +253,47 @@ async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
 
     if let Some(handler_lock) = manager.get(guild.id) {
         let _ = handler_lock.lock().await.queue().resume();
+    }
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+// r#loop since loop is a keyword but we want to use it as a command name
+async fn r#loop(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx).await.expect("Songbird Voice client placed in at initialisation").clone();
+    match args.single() {
+        Ok(arg) => {
+            if let Some(handler_lock) = manager.get(guild.id) {
+                handler_lock.lock().await.queue().current().unwrap().loop_for(arg)?;
+            }
+        },
+        Err(_) => {
+        
+            if let Some(handler_lock) = manager.get(guild.id) {
+                handler_lock.lock().await.queue().current().unwrap().enable_loop()?;
+            }
+        }
+    };
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+#[aliases("disableloop", "deloop")]
+async fn unloop(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx).await.expect("Songbird Voice client placed in at initialisation").clone();
+
+    if let Some(handler_lock) = manager.get(guild.id) {
+        if let Err(why) = handler_lock.lock().await.queue().current().unwrap().disable_loop() {
+            msg.reply(ctx, format!("Something went wrong: {why}")).await?;
+        } else {
+            msg.reply(ctx, "Disabling loop..").await?;
+        }
     }
 
     Ok(())
