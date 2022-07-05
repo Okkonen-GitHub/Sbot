@@ -3,6 +3,7 @@ use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
 };
+use songbird::input::Restartable; // for looping and yt searches (first result) (Restartable::*)
 
 #[command]
 #[only_in(guilds)]
@@ -134,8 +135,8 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if let Some(handler_lock) = manager.get(guild.id) {
         let mut handler = handler_lock.lock().await;
 
-        let source = match songbird::ytdl(&url).await {
-            Ok(source) => source,
+        let source = match Restartable::ytdl(url, true).await {
+            Ok(source) => source.into(),
             Err(why) => {
                 println!("Err starting source: {:?}", why);
 
@@ -166,8 +167,8 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             .clone();
         let handler = manager.join(guild.id, connect_to).await.0;
         let mut lock = handler.lock().await;
-        let source = match songbird::ytdl(&url).await {
-            Ok(source) => source,
+        let source = match Restartable::ytdl(url, true).await {
+            Ok(source) => source.into(),
             Err(why) => {
                 println!("Err starting source: {:?}", why);
 
