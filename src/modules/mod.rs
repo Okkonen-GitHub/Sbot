@@ -1,6 +1,6 @@
-pub mod utils;
 pub mod checks;
 pub mod db;
+pub mod utils;
 
 pub mod activities;
 pub mod core;

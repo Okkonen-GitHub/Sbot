@@ -1,6 +1,7 @@
 mod modules;
 
 use crate::modules::checks::*;
+use crate::modules::music::*;
 use crate::modules::{activities::*, core::*, owner::*, suggestions::*, utils::*, welcome::*}; // temporary
 
 use std::{
@@ -47,6 +48,10 @@ use songbird::SerenityInit;
 )]
 struct General;
 
+#[group]
+#[commands(join, leave)]
+struct Music;
+
 struct Handler {
     activity_loop: AtomicBool,
 }
@@ -78,7 +83,12 @@ impl EventHandler for Handler {
     }
     // we have to have this in the same impl block (only 1 event handler can exist)
     // so I just call into a different funtion in welcome.rs to handle all the logic
-    async fn guild_member_addition(&self, ctx: Context, _guild_id: GuildId, new_member: Member) -> () {
+    async fn guild_member_addition(
+        &self,
+        ctx: Context,
+        _guild_id: GuildId,
+        new_member: Member,
+    ) -> () {
         say_hello(&ctx, &new_member).await;
     }
 }
@@ -138,7 +148,6 @@ async fn main() {
     //*  Music stuff init
     // tracing_subscriber::fmt::init();
 
-
     let framework = StandardFramework::new()
         .configure(|c| {
             c.prefix(prefix)
@@ -148,6 +157,7 @@ async fn main() {
                 .delimiters(vec![", ", ","])
         })
         .group(&GENERAL_GROUP)
+        .group(&MUSIC_GROUP)
         .help(&C_HELP);
 
     // let intents = GatewayIntents::GUILDS
