@@ -56,3 +56,23 @@ async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 
     Ok(())
 }
+#[command]
+#[only_in(guilds)]
+async fn mute(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let manager = songbird::get(ctx).await.expect("Songbird voice client placed in at initialisation").clone();
+
+    match manager.get(guild.id) {
+        Some(call) => {
+            let mut lock = call.lock().await;
+            let is_mute = lock.is_mute();
+            lock.mute(!is_mute).await?;
+        },
+        None => {
+            msg.reply(ctx, "Not in a voice channel").await?;
+        }
+    }
+
+
+    Ok(())
+}
