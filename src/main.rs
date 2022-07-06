@@ -49,7 +49,9 @@ use songbird::SerenityInit;
 struct General;
 
 #[group]
-#[commands(join, leave, mute, deafen, play, stop, skip, pause, resume, unloop, loop)]
+#[commands(
+    join, leave, mute, deafen, play, stop, skip, pause, resume, unloop, loop, playing
+)]
 struct Music;
 
 struct Handler {
