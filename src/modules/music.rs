@@ -5,7 +5,7 @@ use serenity::{
     model::channel::Message,
 };
 
-use super::utils::remove_prefix_from_message;
+use super::utils::{remove_prefix_from_message, seconds_to_human};
 
 use songbird::{input::Restartable, Call}; // for looping and yt searches (first result) (Restartable::*)
 use std::{sync::Arc, time::Duration};
@@ -304,25 +304,29 @@ async fn playing(ctx: &Context, msg: &Message) -> CommandResult {
                 msg.channel_id
                     .send_message(&ctx, |m: &mut CreateMessage| {
                         m.content("Now playing:").embed(|e| {
-                            e.title(format!(
-                                "{}",
-                                metadata.title.unwrap_or("?".to_string())
-                            ))
-                            .description(format!(
-                                "{:?}",
-                                metadata.duration.unwrap_or(Duration::from_secs(0))
-                            ))
-                            .image(
-                                metadata
-                                    .thumbnail
-                                    .unwrap_or("https://http.cat/404".to_owned()),
-                            )
-                            .url(
-                                metadata
-                                    .source_url
-                                    .unwrap_or("https://http.cat/404".to_string()),
-                            )
-                            .timestamp(metadata.date.unwrap_or("2004-06-08T16:04:23".to_string()))
+                            e.title(format!("{}", metadata.title.unwrap_or("?".to_string())))
+                                .description(format!(
+                                    "Duration: {}",
+                                    seconds_to_human(
+                                        metadata
+                                            .duration
+                                            .unwrap_or(Duration::from_secs(0))
+                                            .as_secs()
+                                    )
+                                ))
+                                .image(
+                                    metadata
+                                        .thumbnail
+                                        .unwrap_or("https://http.cat/404".to_owned()),
+                                )
+                                .url(
+                                    metadata
+                                        .source_url
+                                        .unwrap_or("https://http.cat/404".to_string()),
+                                )
+                                .timestamp(
+                                    metadata.date.unwrap_or("2004-06-08T16:04:23".to_string()),
+                                )
                         })
                     })
                     .await?;
