@@ -301,13 +301,14 @@ async fn playing(ctx: &Context, msg: &Message) -> CommandResult {
         match handler_lock.lock().await.queue().current() {
             Some(handler) => {
                 let metadata = handler.metadata().to_owned();
-
+                let track_info = handler.get_info().await.unwrap(); // there has to be a song playing
                 msg.channel_id
                     .send_message(&ctx, |m: &mut CreateMessage| {
                         m.content("Now playing:").embed(|e| {
                             e.title(format!("{}", metadata.title.unwrap_or("?".to_string())))
                                 .description(format!(
-                                    "Duration: {}",
+                                    "{} / {}",
+                                    seconds_to_human(track_info.position.as_secs()),
                                     seconds_to_human(
                                         metadata
                                             .duration
@@ -465,6 +466,74 @@ async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
             })
             .await?;
     };
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+#[aliases("v", "vol")]
+async fn volume(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+
+    #[cfg(debug_assertions)]
+    let prefix = "d";
+    #[cfg(not(debug_assertions))]
+    let prefix = "s";
+
+    let no_prefix = remove_prefix_from_message(&msg.content, prefix);
+    // remove the command used (as it could be either "v", or "volume")
+    let args = no_prefix
+        .split(" ")
+        .skip(1)
+        .collect::<Vec<&str>>()
+        .join(" ");
+
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice blah blah blah")
+        .clone();
+    let handler = match manager.get(guild.id) {
+        Some(handler) => handler,
+        None => {
+            msg.reply(ctx, "Nothing is playing").await?;
+            return Ok(());
+        }
+    };
+    let current_song = match handler.lock().await.queue().current() {
+        Some(song) => song,
+        None => return Ok(()),
+    };
+    let current_volume = current_song.get_info().await.unwrap().volume;
+    if args.len() < 1 {
+        msg.reply(ctx, format!("Current volume is {}", current_volume * 100.0))
+            .await?;
+        return Ok(());
+    }
+
+    match args[1..].parse::<u8>() {
+        Ok(num) => {
+            let volume;
+            if args.starts_with("+") {
+                volume = (num as f32 / 100.0) + current_volume;
+            } else if args.starts_with("-") {
+                volume = current_volume - (num as f32 / 100.0);
+            } else {
+                if let Ok(num) = args.parse::<u8>() {
+                    volume = num as f32 / 100.0;
+                } else {
+                    msg.reply(ctx, format!("Current volume is {}", current_volume * 100.0))
+                        .await?;
+                    return Ok(());
+                }
+            }
+            current_song.set_volume(volume).unwrap();
+        }
+        Err(_) => {
+            msg.reply(ctx, format!("Current volume is {}", current_volume * 100.0))
+                .await?;
+        }
+    }
 
     Ok(())
 }
