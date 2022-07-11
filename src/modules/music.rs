@@ -120,10 +120,8 @@ async fn add_to_queue_url(
     let mut lock = handler.lock().await;
     let source = match Restartable::ytdl(url, true).await {
         Ok(source) => source.into(),
-        Err(why) => {
-            println!("Err starting source: {:?}", why);
-
-            msg.reply(&ctx.http, "Error sourcing ffmpeg").await?;
+        Err(_why) => {
+            msg.reply(&ctx.http, "Error sourcing ffmpeg (try the command again)").await?;
             return Ok(());
         }
     };
@@ -142,7 +140,7 @@ async fn add_to_queue_search(
     let source = match Restartable::ytdl_search(search, true).await {
         Ok(source) => source.into(),
         Err(why) => {
-            msg.reply(&ctx.http, format!("Error sourcing ffmpeg: {why}"))
+            msg.reply(&ctx.http, format!("Error sourcing ffmpeg: {why} (try the command again)"))
                 .await?;
             return Ok(());
         }
