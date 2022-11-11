@@ -98,9 +98,9 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
     let memory_usage = sysinfo.get("memory_usage").unwrap();
     let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
 
-    let user = ctx.cache.current_user().await; // for the profile pic in the embed
+    let user = ctx.cache.current_user(); // for the profile pic in the embed
 
-    let guilds = ctx.cache.guilds().await.len();
+    let guilds = ctx.cache.guilds().len();
 
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
@@ -142,13 +142,13 @@ async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
     let memory_usage = sysinfo.get("memory_usage").unwrap();
     let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
 
-    let user = ctx.cache.current_user().await; // for the profile pic in the embed
+    let user = ctx.cache.current_user(); // for the profile pic in the embed
 
     let cpu_usage = sysinfo.get("cpu_usage").unwrap();
     let os_info = sysinfo.get("os_info").unwrap();
     let thread_count = sysinfo.get("thread_count").unwrap();
 
-    let guilds = ctx.cache.guilds().await.len();
+    let guilds = ctx.cache.guilds().len();
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
             m.embed(|e: &mut CreateEmbed| {

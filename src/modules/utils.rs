@@ -132,7 +132,7 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
 
 // Returns a tuple containing a hashset of bot owners' ids and the bot's id
 pub async fn get_owners(token: &str) -> (HashSet<UserId>, UserId) {
-    let http = Http::new_with_token(&token);
+    let http = Http::new(&token);
 
     // fetch your bot's owners and id
     let (owners, bot_id) = match http.get_current_application_info().await {

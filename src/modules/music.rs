@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 #[command]
 #[only_in(guilds)]
 async fn join(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let guild_id = guild.id;
 
     let channel_id = guild
@@ -41,7 +41,7 @@ async fn join(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let guild_id = guild.id;
 
     let manager = songbird::get(ctx)
@@ -67,7 +67,7 @@ async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("unmute")]
 async fn mute(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird voice client placed in at initialisation")
@@ -91,7 +91,7 @@ async fn mute(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("undeafen")]
 async fn deafen(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird voice client placed in at initialisation")
@@ -153,7 +153,7 @@ async fn add_to_queue_search(
 #[only_in(guilds)]
 #[aliases("p")]
 async fn play(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
@@ -219,7 +219,7 @@ async fn play(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -236,7 +236,7 @@ async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -256,7 +256,7 @@ async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -272,7 +272,7 @@ async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -289,7 +289,7 @@ async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("np", "nowplaying", "playingnow", "pn")]
 async fn playing(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -345,7 +345,7 @@ async fn playing(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 // r#loop since loop is a keyword but we want to use it as a command name
 async fn r#loop(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -382,7 +382,7 @@ async fn r#loop(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("disableloop", "deloop")]
 async fn unloop(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -411,7 +411,7 @@ async fn unloop(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("q")]
 async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation")
@@ -472,7 +472,7 @@ async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("v", "vol")]
 async fn volume(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(ctx).await.unwrap();
+    let guild = msg.guild(ctx).unwrap();
 
     #[cfg(debug_assertions)]
     let prefix = "d";

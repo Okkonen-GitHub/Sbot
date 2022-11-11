@@ -25,6 +25,7 @@ use serenity::{
 use tokio::sync::Mutex;
 
 use songbird::SerenityInit;
+use serenity::client::bridge::voice::VoiceGatewayManager;
 
 //TODO! add commands to a group, this means you Okkonen!!!!
 //TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
@@ -99,7 +100,6 @@ impl EventHandler for Handler {
     async fn guild_member_addition(
         &self,
         ctx: Context,
-        _guild_id: GuildId,
         new_member: Member,
     ) -> () {
         say_hello(&ctx, &new_member).await;
@@ -175,16 +175,17 @@ async fn main() {
         .group(&WELCOME_GROUP)
         .help(&C_HELP);
 
-    // let intents = GatewayIntents::GUILDS
-    //     | GatewayIntents::GUILD_MESSAGES
-    //     | GatewayIntents::GUILD_MESSAGE_REACTIONS
-    //     | GatewayIntents::DIRECT_MESSAGES
-    //     | GatewayIntents::DIRECT_MESSAGE_REACTIONS
-    //     | GatewayIntents::MESSAGE_CONTENT
-    //     | GatewayIntents::GUILD_MEMBERS
-    //     | GatewayIntents::GUILD_PRESENCES; // idk about this one
+    let intents = GatewayIntents::GUILDS
+        | GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::DIRECT_MESSAGE_REACTIONS
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILD_MEMBERS
+        | GatewayIntents::GUILD_PRESENCES // idk about this one
+        | GatewayIntents::GUILD_VOICE_STATES;
 
-    let mut client = Client::builder(token)
+    let mut client = Client::builder(token, intents)
         .event_handler(Handler {
             activity_loop: AtomicBool::new(false),
         })
