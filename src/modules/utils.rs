@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     env,
     path::PathBuf,
+    time::Duration,
 };
 // use serenity::builder::{CreateMessage, CreateEmbed};
 use crate::ShardManagerContainer;
@@ -12,10 +13,10 @@ use serenity::{
     model::id::UserId,
 };
 
-use sysinfo::{ProcessExt, ProcessorExt, System, SystemExt};
+use sysinfo::{CpuExt, ProcessExt, System, SystemExt};
 
 pub fn bytes_to_human(mut bytes: u64) -> String {
-    let symbols: [char; 8] = ['K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
+    let symbols: [char; 9] = ['\0', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
 
     let mut i = 0;
 
@@ -91,7 +92,6 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     sys.refresh_all();
 
     let mut sys_info: HashMap<&str, String> = HashMap::new();
-
     sys_info.insert(
         "memory_usage",
         format!(
@@ -105,7 +105,10 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     // full system information (see full info command)
     if full {
         let mut cpu_usage = Vec::new();
-        for core in sys.processors() {
+        sys.refresh_cpu();
+        tokio::time::sleep(System::MINIMUM_CPU_UPDATE_INTERVAL).await;
+        sys.refresh_cpu();
+        for core in sys.cpus() {
             cpu_usage.push(core.cpu_usage())
         }
         sys_info.insert(
@@ -113,15 +116,15 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
             sys.long_os_version().unwrap_or(String::from("?")),
         );
 
-        sys_info.insert("thread_count", format!("{}", sys.processors().len()));
+        sys_info.insert("thread_count", format!("{}", sys.cpus().len()));
 
         // big brain functional programming
         let cpu_usage_str =
             String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
         sys_info.insert("cpu_usage", cpu_usage_str);
     }
-
-    if let Some(process) = sys.process(sys.processes_by_name("sbot").nth(0).unwrap().pid()) {
+    let proc = sys.processes_by_name("sbot").next();
+    if let Some(process) = proc {
         sys_info.insert("uptime", format!("{}", &process.run_time()));
     } else {
         sys_info.insert("uptime", "? s".to_string());

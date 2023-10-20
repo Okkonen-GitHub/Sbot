@@ -1,5 +1,5 @@
-mod modules;
 mod commands;
+mod modules;
 
 use crate::modules::checks::*;
 use crate::modules::music::*;
@@ -20,9 +20,9 @@ use serenity::{
     async_trait,
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::group, StandardFramework},
+    model::application::command::Command,
+    model::application::interaction::{Interaction, InteractionResponseType},
     model::{gateway::Ready, guild::Member},
-    model::application::interaction::{Interaction,InteractionResponseType},
-    model::application::command::Command
 };
 use tokio::sync::Mutex;
 
@@ -31,16 +31,7 @@ use songbird::SerenityInit;
 //TODO! add commands to a group, this means you Okkonen!!!!
 //TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
 #[group]
-#[commands(
-    ping,
-    about,
-    info,
-    quit,
-    uptime,
-    fullinfo,
-    betterping,
-    testadmin
-)]
+#[commands(ping, about, info, quit, uptime, fullinfo, betterping, testadmin)]
 struct General;
 
 #[group]
@@ -49,15 +40,12 @@ struct General;
     set_suggestion_channel,
     edit_suggestion,
     accept_suggestion,
-    remove_suggestion,
+    remove_suggestion
 )]
 struct Suggestions;
 
 #[group]
-#[commands(
-    set_welcome_channel,
-    set_welcome_message,
-)]
+#[commands(set_welcome_channel, set_welcome_message)]
 struct Welcome;
 
 #[group]
@@ -85,11 +73,13 @@ impl EventHandler for Handler {
 
         let guild_command = Command::create_global_application_command(&ctx.http, |command| {
             commands::ping::register(command)
-
         })
         .await;
 
-        println!("I created the following global slash command: {:#?}", guild_command);
+        println!(
+            "I created the following global slash command: {:#?}",
+            guild_command
+        );
 
         let ctx = Arc::new(ctx);
 
@@ -99,7 +89,7 @@ impl EventHandler for Handler {
                 loop {
                     // println!("boe");
                     set_random_status(Arc::clone(&context)).await;
-                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    tokio::time::sleep(Duration::from_secs(60)).await;
                 }
             });
         }
@@ -107,11 +97,7 @@ impl EventHandler for Handler {
     }
     // we have to have this in the same impl block (only 1 event handler can exist)
     // so I just call into a different funtion in welcome.rs to handle all the logic
-    async fn guild_member_addition(
-        &self,
-        ctx: Context,
-        new_member: Member,
-    ) -> () {
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) -> () {
         say_hello(&ctx, &new_member).await;
     }
 
