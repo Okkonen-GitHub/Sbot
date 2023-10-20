@@ -1,24 +1,59 @@
+mod commands;
 mod modules;
 
-use crate::modules::{core::*, owner::*, utils::*, activities::*};
+use crate::modules::checks::*;
+use crate::modules::music::*;
+use crate::modules::{activities::*, core::*, owner::*, suggestions::*, utils::*, welcome::*}; // temporary
 
-use std::{collections::HashSet, env, fs, io::Write, sync::{atomic::{AtomicBool, Ordering}, Arc }, time::Duration};
-
+use std::{
+    env, fs,
+    io::Write,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use serenity::prelude::*;
 use serenity::{
     async_trait,
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::group, StandardFramework},
-    http::Http,
-    model::gateway::Ready,
+    model::application::command::Command,
+    model::application::interaction::{Interaction, InteractionResponseType},
+    model::{gateway::Ready, guild::Member},
 };
 use tokio::sync::Mutex;
 
-//* add commands to a group, this means you Okkonen!!!!
+use songbird::SerenityInit;
+
+//TODO! add commands to a group, this means you Okkonen!!!!
+//TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
 #[group]
-#[commands(ping, about, info, quit, uptime, fullinfo)]
+#[commands(ping, about, info, quit, uptime, fullinfo, betterping, testadmin)]
 struct General;
+
+#[group]
+#[commands(
+    suggest,
+    set_suggestion_channel,
+    edit_suggestion,
+    accept_suggestion,
+    remove_suggestion
+)]
+struct Suggestions;
+
+#[group]
+#[commands(set_welcome_channel, set_welcome_message)]
+struct Welcome;
+
+#[group]
+#[commands(
+    join, leave, mute, deafen, play, stop, skip, pause, resume, unloop, loop, playing, queue,
+    volume
+)]
+struct Music;
 
 struct Handler {
     activity_loop: AtomicBool,
@@ -26,16 +61,6 @@ struct Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-    // async fn message(&self, ctx: Context, msg: Message) {
-    //     if msg.content == "sping" {
-    //         println!("Shard {}", ctx.shard_id);
-
-    //         if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!").await {
-    //             println!("Error {:?}", why);
-    //         }
-    //     }
-    // }
-
     async fn ready(&self, ctx: Context, ready: Ready) {
         let guilds = match ready.user.guilds(ctx.clone()).await {
             Ok(v) => v.len().to_string(),
@@ -45,6 +70,17 @@ impl EventHandler for Handler {
             "{} is connected & total guilds: {} ",
             ready.user.name, guilds
         );
+
+        let guild_command = Command::create_global_application_command(&ctx.http, |command| {
+            commands::ping::register(command)
+        })
+        .await;
+
+        println!(
+            "I created the following global slash command: {:#?}",
+            guild_command
+        );
+
         let ctx = Arc::new(ctx);
 
         if !self.activity_loop.load(Ordering::Relaxed) {
@@ -52,13 +88,41 @@ impl EventHandler for Handler {
             tokio::spawn(async move {
                 loop {
                     // println!("boe");
-                    set_status(Arc::clone(&context)).await;
+                    set_random_status(Arc::clone(&context)).await;
                     tokio::time::sleep(Duration::from_secs(60)).await;
                 }
             });
         }
         self.activity_loop.swap(true, Ordering::Relaxed);
-        
+    }
+    // we have to have this in the same impl block (only 1 event handler can exist)
+    // so I just call into a different funtion in welcome.rs to handle all the logic
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) -> () {
+        say_hello(&ctx, &new_member).await;
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::ApplicationCommand(command) = interaction {
+            println!("Received command interaction: {:#?}", command);
+
+            let content = match command.data.name.as_str() {
+                "ping" => commands::ping::run(&command.data.options),
+                // "id" => commands::id::run(&command.data.options),
+                // "attachmentinput" => commands::attachmentinput::run(&command.data.options),
+                _ => "not implemented :(".to_string(),
+            };
+
+            if let Err(why) = command
+                .create_interaction_response(&ctx.http, |response| {
+                    response
+                        .kind(InteractionResponseType::ChannelMessageWithSource)
+                        .interaction_response_data(|message| message.content(content))
+                })
+                .await
+            {
+                println!("Cannot respond to slash command: {}", why);
+            }
+        }
     }
 }
 
@@ -67,11 +131,16 @@ struct ShardManagerContainer;
 impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
 }
+struct ShuttingDown;
+
+impl TypeMapKey for ShuttingDown {
+    type Value = AtomicBool;
+}
 
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to load .env");
-    
+
     let token: String;
     let prefix: &str;
 
@@ -79,7 +148,8 @@ async fn main() {
         println!("Running in release mode");
         token = env::var("DISCORD_TOKEN").expect("token");
         prefix = "s";
-    } else { // development mode
+    } else {
+        // development mode
         token = env::var("DEV_TOKEN").expect("token");
         prefix = "d"; // d for now...
     }
@@ -90,7 +160,7 @@ async fn main() {
         // println!("{:?}", &path);
 
         if !path.exists() {
-            fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
+            fs::create_dir(&path).expect("Failed to create data directory");
         }
 
         fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
@@ -98,29 +168,19 @@ async fn main() {
             b.write(b"{}").unwrap();
             b
         });
+        let path = get_pwd().join("data/");
+        fs::File::open(path.join("guilds.json")).unwrap_or_else(|_| {
+            println!("wtf");
+            let mut b = fs::File::create(path.join("guilds.json")).unwrap();
+            b.write(b"{}").unwrap();
+            b
+        });
     }
+    let (owners, bot_id) = get_owners(&token).await;
 
-    let http = Http::new_with_token(&token);
+    //*  Music stuff init
+    // tracing_subscriber::fmt::init();
 
-    // fetch your bot's owners and id
-    let (owners, bot_id) = match http.get_current_application_info().await {
-        Ok(info) => {
-            let mut owners = HashSet::new();
-            if let Some(team) = info.team {
-                for member in team.members {
-                    owners.insert(member.user.id);
-                }
-            } else {
-                owners.insert(info.owner.id);
-            }
-            match http.get_current_user().await {
-                Ok(bot_id) => (owners, bot_id.id),
-                Err(why) => panic!("Could not access the bot id: {:?}", why),
-            }
-        }
-        Err(why) => panic!("Could not access application info: {:?}", why),
-    };
-    // println!("{:?}", owners);
     let framework = StandardFramework::new()
         .configure(|c| {
             c.prefix(prefix)
@@ -130,19 +190,34 @@ async fn main() {
                 .delimiters(vec![", ", ","])
         })
         .group(&GENERAL_GROUP)
+        .group(&MUSIC_GROUP)
+        .group(&SUGGESTIONS_GROUP)
+        .group(&WELCOME_GROUP)
         .help(&C_HELP);
 
-    let mut client = Client::builder(token)
+    let intents = GatewayIntents::GUILDS
+        | GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::DIRECT_MESSAGE_REACTIONS
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILD_MEMBERS
+        | GatewayIntents::GUILD_PRESENCES // idk about this one
+        | GatewayIntents::GUILD_VOICE_STATES;
+
+    let mut client = Client::builder(token, intents)
         .event_handler(Handler {
             activity_loop: AtomicBool::new(false),
         })
         .framework(framework)
+        .register_songbird()
         .await
         .expect("Error creating the client");
 
     {
         let mut data = client.data.write().await;
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+        data.insert::<ShuttingDown>(AtomicBool::new(false)); // bot is not shutting down (if false)
     }
 
     if let Err(why) = client.start_shards(2).await {
