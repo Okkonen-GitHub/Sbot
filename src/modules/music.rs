@@ -377,7 +377,7 @@ async fn playing(ctx: &Context, msg: &Message) -> CommandResult {
                                         .unwrap_or("https://http.cat/404".to_string()),
                                 )
                                 .timestamp(
-                                    metadata.date.unwrap_or("2004-06-08T16:04:23".to_string()),
+                                    metadata.date.unwrap_or("2004-06-08T16:04:23Z".to_string()),
                                 )
                         })
                     })
