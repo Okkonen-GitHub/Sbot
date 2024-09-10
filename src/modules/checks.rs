@@ -1,12 +1,3 @@
-use serenity::{
-    client::Context,
-    framework::standard::{
-        macros::{check, command},
-        Args, CommandResult, Reason,
-    },
-    model::channel::Message,
-};
-
 #[command] // gonna remove this soon but not now
 #[checks(Admin)]
 async fn testadmin(ctx: &Context, msg: &Message) -> CommandResult {

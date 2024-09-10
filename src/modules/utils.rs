@@ -1,19 +1,23 @@
 use std::{
     collections::{HashMap, HashSet},
     env,
-    path::PathBuf,
-    // time::Duration,
+    ffi::OsStr,
+    os::unix::ffi::OsStrExt,
+    path::PathBuf, // time::Duration,
 };
 // use serenity::builder::{CreateMessage, CreateEmbed};
-use crate::ShardManagerContainer;
+// use crate::ShardManagerContainer;
 
-use serenity::{
-    client::{bridge::gateway::ShardId, Context},
-    http::Http,
-    model::id::UserId,
-};
+// use serenity::{
+//     client::{bridge::gateway::ShardId, Context},
+//     http::Http,
+//     model::id::UserId,
+// };
+use poise::serenity_prelude as serenity;
 
-use sysinfo::{CpuExt, ProcessExt, System, SystemExt};
+use crate::{Context, Error};
+
+use sysinfo::{System, MINIMUM_CPU_UPDATE_INTERVAL};
 
 pub fn bytes_to_human(mut bytes: u64) -> String {
     let symbols: [char; 9] = ['\0', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
@@ -64,25 +68,25 @@ pub fn get_pwd() -> PathBuf {
     env::current_dir().unwrap()
 }
 
-pub async fn get_ping(ctx: &Context) -> String {
-    let latency = {
-        let data_read = ctx.data.read().await;
-        let shard_manager = data_read.get::<ShardManagerContainer>().unwrap();
-
-        let manager = shard_manager.lock().await;
-        let runners = manager.runners.lock().await;
-
-        let runner = runners.get(&ShardId(ctx.shard_id)).unwrap();
-
-        if let Some(duration) = runner.latency {
-            format!("{:.2} ms", duration.as_millis())
-        } else {
-            "? ms".to_string()
-        }
-    };
-
-    latency
-}
+// pub async fn get_ping(ctx: Context<'_>) -> String {
+//     let latency = {
+//         let data_read = ctx.data().read().await;
+//         let shard_manager = data_read.get::<ShardManagerContainer>().unwrap();
+//
+//         let manager = shard_manager.lock().await;
+//         let runners = manager.runners.lock().await;
+//
+//         let runner = runners.get(&ShardId(ctx.shard_id)).unwrap();
+//
+//         if let Some(duration) = runner.latency {
+//             format!("{:.2} ms", duration.as_millis())
+//         } else {
+//             "? ms".to_string()
+//         }
+//     };
+//
+//     latency
+// }
 
 pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     // Get cpu usage, cpu count, memory usage, uptime, rust version, serenity version, and the number of shards
@@ -105,15 +109,15 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     // full system information (see full info command)
     if full {
         let mut cpu_usage = Vec::new();
-        sys.refresh_cpu();
-        tokio::time::sleep(System::MINIMUM_CPU_UPDATE_INTERVAL).await;
-        sys.refresh_cpu();
+        sys.refresh_cpu_all();
+        tokio::time::sleep(MINIMUM_CPU_UPDATE_INTERVAL).await;
+        sys.refresh_cpu_all();
         for core in sys.cpus() {
             cpu_usage.push(core.cpu_usage())
         }
         sys_info.insert(
             "os_info",
-            sys.long_os_version().unwrap_or(String::from("?")),
+            sysinfo::System::long_os_version().unwrap_or(String::from("?")),
         );
 
         sys_info.insert("thread_count", format!("{}", sys.cpus().len()));
@@ -123,7 +127,7 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
             String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
         sys_info.insert("cpu_usage", cpu_usage_str);
     }
-    let proc = sys.processes_by_name("sbot").next();
+    let proc = sys.processes_by_name(OsStr::from_bytes(b"sbot")).next();
     if let Some(process) = proc {
         sys_info.insert("uptime", format!("{}", &process.run_time()));
     } else {
@@ -134,8 +138,8 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
 }
 
 // Returns a tuple containing a hashset of bot owners' ids and the bot's id
-pub async fn get_owners(token: &str) -> (HashSet<UserId>, UserId) {
-    let http = Http::new(&token);
+pub async fn get_owners(token: &str) -> (HashSet<serenity::UserId>, serenity::UserId) {
+    let http = serenity::Http::new(&token);
 
     // fetch your bot's owners and id
     let (owners, bot_id) = match http.get_current_application_info().await {
@@ -146,7 +150,7 @@ pub async fn get_owners(token: &str) -> (HashSet<UserId>, UserId) {
                     owners.insert(member.user.id);
                 }
             } else {
-                owners.insert(info.owner.id);
+                owners.insert(info.owner.unwrap().id);
             }
             match http.get_current_user().await {
                 Ok(bot_id) => (owners, bot_id.id),
