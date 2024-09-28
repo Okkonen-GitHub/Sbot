@@ -70,16 +70,14 @@ pub async fn betterping(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(slash_command, prefix_command)]
-// #[aliases("up")]
+#[poise::command(slash_command, prefix_command, aliases("up"))]
 pub async fn uptime(ctx: Context<'_>) -> Result<(), Error> {
     let sysinfo = get_sys(false).await;
     let uptime: String = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
     ctx.reply(format!("{uptime}")).await?;
     Ok(())
 }
-#[poise::command(slash_command, prefix_command)]
-// #[aliases("stats")]
+#[poise::command(slash_command, prefix_command, aliases("stats"))]
 pub async fn info(ctx: Context<'_>) -> Result<(), Error> {
     const BOT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
