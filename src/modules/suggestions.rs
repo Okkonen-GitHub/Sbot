@@ -34,7 +34,19 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
         Some(mut data) => {
             // println!("{:?}", data);
             // unwrap hell
-            let suggestion_channel = data.get("suggestion_channel").unwrap();
+            let suggestion_channel = match data.get("suggestion_channel") {
+                Some(chnl) => {
+                    if *chnl == serde_json::Value::Null {
+                        msg.reply(ctx, "No suggestion channel set").await?;
+                        return Ok(())
+                    }
+                    chnl
+                },
+                None => {
+                    msg.reply(ctx, "No suggestion channel set").await?;
+                    return Ok(())
+                }
+            };
             let suggestion_channel = ChannelId(suggestion_channel.as_u64().unwrap());
             
             // to avoid duplicates
