@@ -54,6 +54,15 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+#[aliases("up")]
+async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
+    let sysinfo = get_sys(false).await;
+    let uptime: String = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
+    msg.reply(ctx, format!("{uptime}")).await?;
+    Ok(())
+}
+
+#[command]
 #[aliases("stats")]
 async fn info(ctx: &Context, msg: &Message) -> CommandResult {
     let latency = get_ping(ctx).await;
