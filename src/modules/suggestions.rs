@@ -1,12 +1,16 @@
-use serde::{Serialize, Deserialize};
-use serde_json::Value;
-use serenity::{
-    client::Context,
-    framework::standard::{macros::command, CommandResult},
-    model::{channel::Message, id::{ChannelId, MessageId}}, builder::{CreateEmbed, CreateMessage, CreateEmbedAuthor},
-};
 use super::db::*;
 use super::utils::{get_pwd, remove_prefix_from_message};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use serenity::{
+    builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage},
+    client::Context,
+    framework::standard::{macros::command, CommandResult},
+    model::{
+        channel::Message,
+        id::{ChannelId, MessageId},
+    },
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct Suggestion {
@@ -17,14 +21,14 @@ pub struct Suggestion {
     pub message_id: u64,
 }
 
-
 // `<prefix> suggest my suggestion`
 #[command]
 async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = match msg.guild_id {
         Some(id) => id.0,
         None => {
-            msg.reply(ctx, "You must be in a server to use this command.").await?;
+            msg.reply(ctx, "You must be in a server to use this command.")
+                .await?;
             return Ok(());
         }
     };
@@ -37,20 +41,23 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
                 Some(chnl) => {
                     if *chnl == serde_json::Value::Null {
                         msg.reply(ctx, "No suggestion channel set").await?;
-                        return Ok(())
+                        return Ok(());
                     }
                     chnl
-                },
+                }
                 None => {
                     msg.reply(ctx, "No suggestion channel set").await?;
-                    return Ok(())
+                    return Ok(());
                 }
             };
             let suggestion_channel = ChannelId(suggestion_channel.as_u64().unwrap());
-            
+
             // to avoid duplicates
             let mut suggestion_id = 0;
-            for suggestion in data["suggestions"].as_array().unwrap_or(&Vec::<Value>::new()) {
+            for suggestion in data["suggestions"]
+                .as_array()
+                .unwrap_or(&Vec::<Value>::new())
+            {
                 let current = suggestion["id"].as_u64().unwrap();
                 if current > suggestion_id {
                     suggestion_id = current;
@@ -62,25 +69,29 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
             let bot_prefix = "d";
             #[cfg(not(debug_assertions))]
             let bot_prefix = "s";
-            
+
             let no_prefix = remove_prefix_from_message(&msg.content, bot_prefix);
-            let suggestion_content = no_prefix.split(" ").skip(1).collect::<Vec<&str>>().join(" ");
-            
+            let suggestion_content = no_prefix
+                .split(" ")
+                .skip(1)
+                .collect::<Vec<&str>>()
+                .join(" ");
 
             let added_suggestion = suggestion_channel
                 .send_message(ctx, |m: &mut CreateMessage| {
                     m.embed(|e: &mut CreateEmbed| {
                         e.title(format!("Suggestion #{}", suggestion_id))
-                        .description(format!("{}", suggestion_content))
-                        .timestamp(msg.timestamp)
-                        .author(|a: &mut CreateEmbedAuthor| {
-                            a.name(msg.author.name.clone())
-                            .icon_url(msg.author.avatar_url().unwrap_or("".to_string()))
-                        });
+                            .description(format!("{}", suggestion_content))
+                            .timestamp(msg.timestamp)
+                            .author(|a: &mut CreateEmbedAuthor| {
+                                a.name(msg.author.name.clone())
+                                    .icon_url(msg.author.avatar_url().unwrap_or("".to_string()))
+                            });
                         e
                     });
                     m
-                }).await?;
+                })
+                .await?;
             {
                 // save to db
                 let suggestion = Suggestion {
@@ -88,7 +99,7 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
                     suggestion: suggestion_content.clone(),
                     timestamp: msg.timestamp.to_rfc3339(),
                     id: suggestion_id,
-                    message_id: added_suggestion.id.0
+                    message_id: added_suggestion.id.0,
                 };
                 if let Some(suggestions) = data["suggestions"].as_array_mut() {
                     suggestions.push(serde_json::to_value(suggestion).unwrap());
@@ -114,15 +125,13 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
                     msg.reply(ctx, format!("Error: {}", why)).await?;
                 }
             }
-        },
+        }
         None => {
             msg.reply(ctx, "No suggestion channel set").await?;
             return Ok(());
         }
-
     }
 
-    
     Ok(())
 }
 
@@ -133,7 +142,8 @@ async fn remove_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = match msg.guild_id {
         Some(id) => id.0,
         None => {
-            msg.reply(ctx, "You must be in a server to use this command.").await?;
+            msg.reply(ctx, "You must be in a server to use this command.")
+                .await?;
             return Ok(());
         }
     };
@@ -156,17 +166,23 @@ async fn remove_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     match data {
         Some(data) => {
             let mut suggestions = data["suggestions"].as_array().unwrap().to_owned();
-            let suggestion = suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id);
+            let suggestion = suggestions
+                .iter()
+                .find(|s| s["id"].as_u64().unwrap() == suggestion_id);
             match suggestion {
                 Some(suggestion) => {
                     if suggestion["submitter_id"].as_u64().unwrap() == msg.author.id.0 {
                         // then delete the suggestion message
-                        let suggestion_channel = ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
+                        let suggestion_channel =
+                            ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
                         let msg_id = MessageId(suggestion["message_id"].as_u64().unwrap());
                         suggestion_channel.delete_message(ctx, msg_id).await?;
 
                         // remove the suggestion from the db
-                        let index = suggestions.iter().position(|s| s["id"].as_u64().unwrap() == suggestion_id).unwrap();
+                        let index = suggestions
+                            .iter()
+                            .position(|s| s["id"].as_u64().unwrap() == suggestion_id)
+                            .unwrap();
                         suggestions.remove(index);
                         let new_data = serde_json::json!({
                             "suggestion_channel": suggestion_channel.0,
@@ -181,7 +197,7 @@ async fn remove_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
                     msg.reply(ctx, "Invalid suggestion id").await?;
                 }
             }
-        },
+        }
         None => {
             msg.reply(ctx, "No previous suggesions").await?;
             return Ok(());
@@ -198,7 +214,8 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = match msg.guild_id {
         Some(id) => id.0,
         None => {
-            msg.reply(ctx, "You must be in a server to use this command.").await?;
+            msg.reply(ctx, "You must be in a server to use this command.")
+                .await?;
             return Ok(());
         }
     };
@@ -214,7 +231,8 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
         Some(id) => match id.parse::<u64>() {
             Ok(id) => id,
             Err(_) => {
-                msg.reply(ctx, "Invalid suggestion id (must be a number)").await?;
+                msg.reply(ctx, "Invalid suggestion id (must be a number)")
+                    .await?;
                 return Ok(());
             }
         },
@@ -223,7 +241,11 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
             return Ok(());
         }
     };
-    let edited_suggestion = no_prefix.split(" ").skip(2).collect::<Vec<&str>>().join(" ");
+    let edited_suggestion = no_prefix
+        .split(" ")
+        .skip(2)
+        .collect::<Vec<&str>>()
+        .join(" ");
 
     // find the suggestion by id
     let db = JsonDb::new(get_pwd().join("data/guilds.json"));
@@ -231,7 +253,10 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     match data {
         Some(data) => {
             let suggestions = data["suggestions"].as_array().unwrap();
-            let suggestion = match suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id) {
+            let suggestion = match suggestions
+                .iter()
+                .find(|s| s["id"].as_u64().unwrap() == suggestion_id)
+            {
                 Some(s) => s.to_owned(),
                 None => {
                     msg.reply(ctx, "Suggestion not found").await?;
@@ -240,18 +265,24 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
             };
             // check if the submitter is the same as the author of the message
             if suggestion["submitter_id"].as_u64().unwrap() != msg.author.id.0 {
-                msg.reply(ctx, "You can only edit your own suggestions.").await?;
+                msg.reply(ctx, "You can only edit your own suggestions.")
+                    .await?;
                 return Ok(());
             }
             // edit the suggestion
-            let suggestions: Vec<Value> = suggestions.clone().iter_mut().map(|suggestion| {
-                if suggestion["id"].as_u64().unwrap() == suggestion_id {
-                    suggestion["suggestion"] = serde_json::Value::String(edited_suggestion.clone());
-                    suggestion.clone()
-                } else {
-                    suggestion.clone()
-                }
-            }).collect(); // this feels so garbage but it works so...
+            let suggestions: Vec<Value> = suggestions
+                .clone()
+                .iter_mut()
+                .map(|suggestion| {
+                    if suggestion["id"].as_u64().unwrap() == suggestion_id {
+                        suggestion["suggestion"] =
+                            serde_json::Value::String(edited_suggestion.clone());
+                        suggestion.clone()
+                    } else {
+                        suggestion.clone()
+                    }
+                })
+                .collect(); // this feels so garbage but it works so...
 
             let new_data = serde_json::json!({
                 "suggestion_channel": data["suggestion_channel"].as_u64().unwrap(),
@@ -263,31 +294,34 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
 
             // edit the message in the suggestion channel
             let message_id = suggestion["message_id"].as_u64().unwrap();
-            let suggestion_channel = ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
+            let suggestion_channel =
+                ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
 
-            suggestion_channel.edit_message(ctx, message_id, |m| {
-                m.embed(|e: &mut CreateEmbed| {
-                    e.title(format!("Suggestion #{} (edited)", suggestion_id))
-                    .description(format!("{}", edited_suggestion))
-                    .timestamp(msg.timestamp)
-                    .author(|a: &mut CreateEmbedAuthor| {
-                        a.name(msg.author.name.clone())
-                        .icon_url(msg.author.avatar_url().unwrap_or("".to_string()))
+            suggestion_channel
+                .edit_message(ctx, message_id, |m| {
+                    m.embed(|e: &mut CreateEmbed| {
+                        e.title(format!("Suggestion #{} (edited)", suggestion_id))
+                            .description(format!("{}", edited_suggestion))
+                            .timestamp(msg.timestamp)
+                            .author(|a: &mut CreateEmbedAuthor| {
+                                a.name(msg.author.name.clone())
+                                    .icon_url(msg.author.avatar_url().unwrap_or("".to_string()))
+                            });
+                        e
                     });
-                    e
-                });
-                m
-            }).await?;
+                    m
+                })
+                .await?;
             msg.reply(ctx, "Suggestion edited").await?;
-        },
+        }
         None => {
-            msg.reply(ctx, "No suggestions in this guild from before").await?;
+            msg.reply(ctx, "No suggestions in this guild from before")
+                .await?;
             return Ok(());
         }
     }
     Ok(())
 }
-
 
 //TODO only server admins should be able to use this command
 //TODO implement checks: #[check(Admin)] or #[admin_only]
@@ -299,7 +333,8 @@ async fn accept_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = match msg.guild_id {
         Some(id) => id.0,
         None => {
-            msg.reply(ctx, "You must be in a server to use this command.").await?;
+            msg.reply(ctx, "You must be in a server to use this command.")
+                .await?;
             return Ok(());
         }
     };
@@ -314,7 +349,8 @@ async fn accept_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
         Some(id) => match id.parse::<u64>() {
             Ok(id) => id,
             Err(_) => {
-                msg.reply(ctx, "Invalid suggestion id (must be a number)").await?;
+                msg.reply(ctx, "Invalid suggestion id (must be a number)")
+                    .await?;
                 return Ok(());
             }
         },
@@ -329,35 +365,46 @@ async fn accept_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     match data {
         Some(data) => {
             let suggestions = data["suggestions"].as_array().unwrap();
-            match suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id) {
+            match suggestions
+                .iter()
+                .find(|s| s["id"].as_u64().unwrap() == suggestion_id)
+            {
                 Some(s) => {
                     let suggestion = s.to_owned();
                     // edit the message in the suggestion channel
-                    let channel_id = ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
+                    let channel_id =
+                        ChannelId(data.get("suggestion_channel").unwrap().as_u64().unwrap());
                     let message_id = suggestion["message_id"].as_u64().unwrap();
-                    channel_id.edit_message(ctx, message_id, |m| {
-                        m.embed(|e: &mut CreateEmbed| {
-                            e.title(format!("Suggestion #{} (accepted)", suggestion_id))
-                            .description(format!("{}", suggestion["suggestion"].as_str().unwrap()))
-                            .timestamp(msg.timestamp)
-                            .author(|a: &mut CreateEmbedAuthor| {
-                                a.name(msg.author.name.clone())
-                                .icon_url(msg.author.avatar_url().unwrap_or("".to_string()))
+                    channel_id
+                        .edit_message(ctx, message_id, |m| {
+                            m.embed(|e: &mut CreateEmbed| {
+                                e.title(format!("Suggestion #{} (accepted)", suggestion_id))
+                                    .description(format!(
+                                        "{}",
+                                        suggestion["suggestion"].as_str().unwrap()
+                                    ))
+                                    .timestamp(msg.timestamp)
+                                    .author(|a: &mut CreateEmbedAuthor| {
+                                        a.name(msg.author.name.clone()).icon_url(
+                                            msg.author.avatar_url().unwrap_or("".to_string()),
+                                        )
+                                    });
+                                e
                             });
-                            e
-                        });
-                        m
-                    }).await?;
+                            m
+                        })
+                        .await?;
                     // idc to add some accepted boolean to the database
-                },
+                }
                 None => {
                     msg.reply(ctx, "Suggestion not found").await?;
                     return Ok(());
                 }
             };
-        },
+        }
         None => {
-            msg.reply(ctx, "No suggestions in this guild from before").await?;
+            msg.reply(ctx, "No suggestions in this guild from before")
+                .await?;
             return Ok(());
         }
     }
@@ -393,11 +440,8 @@ async fn set_suggestion_channel(ctx: &Context, msg: &Message) -> CommandResult {
                 }
             }
         },
-        None => {
-            msg.channel_id
-        }
+        None => msg.channel_id,
     };
-
 
     if let Some(guild_id) = msg.guild_id {
         let path = get_pwd().join("data/guilds.json");
