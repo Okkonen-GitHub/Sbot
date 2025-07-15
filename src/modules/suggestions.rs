@@ -44,9 +44,8 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
             #[cfg(not(debug_assertions))]
             let bot_prefix = "s";
             
-            // *! fix:
-            //* first skip prefix, then command (it is not guaranteed that there is a space between them)
-            let suggestion_content = &msg.content.split(" ").skip(2).collect::<Vec<&str>>().join(" ");
+            let no_prefix = remove_prefix_from_message(&msg.content, bot_prefix);
+            let suggestion_content = no_prefix.split(" ").skip(1).collect::<Vec<&str>>().join(" ");
             
 
             let added_suggestion = suggestion_channel
@@ -187,6 +186,8 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 
+//TODO only server admins should be able to use this command
+//TODO implement checks: #[check(Admin)] or #[admin_only]
 #[command]
 #[aliases("suggestions")]
 async fn set_suggestion_channel(ctx: &Context, msg: &Message) -> CommandResult {
