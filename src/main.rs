@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 //TODO! add commands to a group, this means you Okkonen!!!!
 //TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
 #[group]
-#[commands(ping, about, info, quit, uptime, fullinfo, betterping, suggest, set_suggestion_channel, edit_suggestion, accept_suggestion, remove_suggestion, set_welcome_channel)]
+#[commands(ping, about, info, quit, uptime, fullinfo, betterping, suggest, set_suggestion_channel, edit_suggestion, accept_suggestion, remove_suggestion, set_welcome_channel, set_welcome_message)]
 struct General;
 
 struct Handler {
