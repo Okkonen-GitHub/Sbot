@@ -32,7 +32,6 @@ async fn suggest(ctx: &Context, msg: &Message) -> CommandResult {
     let data = db.get(&guild_id.to_string()).await;
     match data {
         Some(mut data) => {
-            // println!("{:?}", data);
             // unwrap hell
             let suggestion_channel = match data.get("suggestion_channel") {
                 Some(chnl) => {
@@ -210,7 +209,6 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     let bot_prefix = "s";
 
     let no_prefix = remove_prefix_from_message(&msg.content, bot_prefix);
-    // println!("{:?}", no_prefix.split(" "));
     // get the suggestion id and the edited suggestion from the message
     let suggestion_id = match no_prefix.split(" ").nth(1) {
         Some(id) => match id.parse::<u64>() {
