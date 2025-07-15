@@ -17,7 +17,7 @@ pub fn bytes_to_human(mut bytes: u64) -> String {
 
     let mut i = 0;
 
-    while bytes >= 1024 {
+    while bytes >= 1024 { // could use a bitsift here but too lazy to do that
         bytes /= 1024;
         i += 1;
     }
@@ -97,23 +97,19 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
         sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
     ));
     
-    
+    // full system information (see full info command)
     if full {
         let mut cpu_usage = Vec::new();
         for core in sys.processors() {
-            cpu_usage.push(
-                core.cpu_usage()
-            )     
+            cpu_usage.push(core.cpu_usage())     
         }
         sys_info.insert("os_info", sys.long_os_version().unwrap_or(String::from("?")));
 
         sys_info.insert("thread_count", format!("{}", sys.processors().len()));
 
+        // big brain functional programming
         let cpu_usage_str = String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
         sys_info.insert("cpu_usage", cpu_usage_str);
-        // for val in &cpu_usage{
-        //     cpu_usage_str.push_str(&format!("\n{:.1}%", val));
-        // }
     }
 
     if let Some(process) = sys.process(sys.processes_by_name("sbot").nth(0).unwrap().pid()) {
@@ -152,11 +148,9 @@ pub async fn get_owners(token: &str) -> (HashSet<UserId>, UserId) {
 
 // removes prefix and possibly whitespace from the beginning of a string
 pub fn remove_prefix_from_message(message: &String, prefix: &str) -> String {
-    // big brain algorithm from copilot
-    
     if message.starts_with(prefix) {
         let message = message[prefix.len()..].to_string();
-        let message = message.trim_start();
+        let message = message.trim_start(); // trim whitespace from the beginning (if there is any)
         message.to_string()
     } else {
         // should never happen
