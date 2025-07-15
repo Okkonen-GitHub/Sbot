@@ -15,8 +15,9 @@ use serenity::{
 use tokio::sync::Mutex;
 
 //TODO! add commands to a group, this means you Okkonen!!!!
+//TODO: Add more groups (suggestions, misc, owner, moderation, etc)
 #[group]
-#[commands(ping, about, info, quit, uptime, fullinfo, betterping, suggest, set_suggestion_channel)]
+#[commands(ping, about, info, quit, uptime, fullinfo, betterping, suggest, set_suggestion_channel, edit_suggestion)]
 struct General;
 
 struct Handler {
