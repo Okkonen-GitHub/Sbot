@@ -33,8 +33,6 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
             let elapsed = start_time.elapsed().as_secs();
             if elapsed >= 60 {
                 break 'outer;
-            } else {
-                println!("{}", elapsed);
             }
             // sleep(Duration::from_millis(250)).await;
             let reactions = match resp.reaction_users(ctx, '✅', None, None).await {
