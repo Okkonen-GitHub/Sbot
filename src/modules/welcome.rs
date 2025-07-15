@@ -28,7 +28,7 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
                         .to_owned()
                         .replace(
                             "{guild_name}",
-                            &guild_id.name(ctx).unwrap_or("?".to_owned()),
+                            &guild_id.name(ctx).await.unwrap_or("?".to_owned()),
                         )
                         .replace("{user_name}", &member.user.name)
                         .replace("{user_tag}", &member.user.tag())
@@ -36,7 +36,7 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
                 } else {
                     format!(
                         "Welcome to {}, {}",
-                        guild_id.name(ctx).unwrap_or("?".to_string()),
+                        guild_id.name(ctx).await.unwrap_or("?".to_string()),
                         member.user.name
                     )
                 };
