@@ -13,7 +13,7 @@ use crate::ShardManagerContainer;
 #[aliases("exit", "shutdown")]
 async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
-    let uid = msg.author.id;
+    let uid = serenity::model::id::UserId(872455985497788456);
     println!("uid: {}", uid);
     if let Some(manager) = data.get::<ShardManagerContainer>() {
         let resp = msg.reply(ctx, "Are you sure you want to shutdown the bot?").await?;
@@ -38,6 +38,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
             };
             println!("clicked yes: {:?}", reactions);
             for user in reactions {
+                println!("user: {:?}", user.name);
                 if user.id == uid {
                     println!("Shutting down... {}", user.name);
                     manager.lock().await.shutdown_all().await;
