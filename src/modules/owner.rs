@@ -4,6 +4,8 @@ use serenity::{
     model::channel::Message,
 };
 
+use tokio::time::{sleep, Duration};
+
 use crate::ShardManagerContainer;
 
 #[command]
@@ -25,6 +27,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
             }
         }
         loop {
+            sleep(Duration::from_secs(10)).await;
             let reactions = match msg.reaction_users(ctx, '✅', None, Some(uid)).await {
                 Ok(v) => v,
                 Err(why) => {
