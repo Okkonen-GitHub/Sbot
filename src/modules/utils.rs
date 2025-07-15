@@ -27,8 +27,14 @@ async fn bytes_to_human(mut bytes: u64) -> String {
 
 pub async fn seconds_to_human(mut secs: u64) -> String {
     
-    let mut hours = 0;
+    let mut hours= 0;
     let mut mins = 0;
+    let mut days= 0;
+
+    while secs >= 86400 {
+        days +=1;
+        secs -=86400;
+    }
 
     while secs >= 3600 {
         hours += 1;
@@ -39,7 +45,9 @@ pub async fn seconds_to_human(mut secs: u64) -> String {
         mins += 1;
         secs -= 60;
     }
-    if hours > 0 {
+    if days > 0 {
+        format!("{}d {}h", days, hours)
+    } else if hours > 0 {
         format!("{}h {}m", hours, mins)
     } else if mins > 0 {
         format!("{}m {}s", mins, secs)
