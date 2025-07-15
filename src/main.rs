@@ -1,33 +1,18 @@
 mod modules;
 
-use crate::modules::{
-    core::*,
-    owner::*,
-};
+use crate::modules::{core::*, owner::*};
 
-use std::{
-    collections::HashSet,
-    env,
-    sync::Arc,
-};
+use std::{collections::HashSet, env, sync::Arc};
 
-use serenity::{
-    prelude::*,
-    // model::id::GuildId
-};
+use serenity::prelude::*;
 use serenity::{
     async_trait,
     client::bridge::gateway::ShardManager,
-    framework::standard::{
-        macros::group,
-        StandardFramework,
-    },
+    framework::standard::{macros::group, StandardFramework},
     http::Http,
     model::gateway::Ready,
 };
 use tokio::sync::Mutex;
-
-
 
 // add commands to a group!
 #[group]
@@ -47,13 +32,16 @@ impl EventHandler for Handler {
     //         }
     //     }
     // }
-    
+
     async fn ready(&self, ctx: Context, ready: Ready) {
         let guilds = match ready.user.guilds(ctx).await {
             Ok(v) => v.len().to_string(),
-            _ => String::from("?")
+            _ => String::from("?"),
         };
-        println!("{} is connected & total guilds: {} ",ready.user.name, guilds);
+        println!(
+            "{} is connected & total guilds: {} ",
+            ready.user.name, guilds
+        );
     }
 }
 
@@ -65,7 +53,6 @@ impl TypeMapKey for ShardManagerContainer {
 
 #[tokio::main]
 async fn main() {
-
     dotenv::dotenv().expect("Failed to load .env");
 
     let token = env::var("DISCORD_TOKEN").expect("token");
@@ -77,7 +64,9 @@ async fn main() {
         Ok(info) => {
             let mut owners = HashSet::new();
             if let Some(team) = info.team {
-                owners.insert(team.owner_user_id);
+                for member in team.members {
+                    owners.insert(member.user.id);
+                }
             } else {
                 owners.insert(info.owner.id);
             }
@@ -85,22 +74,20 @@ async fn main() {
                 Ok(bot_id) => (owners, bot_id.id),
                 Err(why) => panic!("Could not access the bot id: {:?}", why),
             }
-        },
+        }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
     println!("{:?}", owners);
     let framework = StandardFramework::new()
-        .configure(|c| c
-        .prefix("s")
-        .owners(owners)
-        .with_whitespace(true)
-        .on_mention(Some(bot_id))
-        .delimiters(vec![", ", ","])
-    )
-        
-    .group(&GENERAL_GROUP)
-    .help(&C_HELP);
-
+        .configure(|c| {
+            c.prefix("s")
+                .owners(owners)
+                .with_whitespace(true)
+                .on_mention(Some(bot_id))
+                .delimiters(vec![", ", ","])
+        })
+        .group(&GENERAL_GROUP)
+        .help(&C_HELP);
 
     let mut client = Client::builder(token)
         .event_handler(Handler)
@@ -117,6 +104,3 @@ async fn main() {
         println!("An error oocured while running the client: {:?}", why);
     }
 }
-
-
-
