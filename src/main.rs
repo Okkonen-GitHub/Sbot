@@ -1,9 +1,8 @@
 mod modules;
 
-use crate::modules::{core::*, owner::*, utils::*};
+use crate::modules::{core::*, owner::*, utils::*, activities::*};
 
-use std::{collections::HashSet, env, sync::Arc, fs, io::Write};
-
+use std::{collections::HashSet, env, fs, io::Write, sync::{atomic::{AtomicBool, Ordering}, Arc }, time::Duration};
 
 
 use serenity::prelude::*;
@@ -21,7 +20,9 @@ use tokio::sync::Mutex;
 #[commands(ping, about, info, quit, uptime, fullinfo)]
 struct General;
 
-struct Handler;
+struct Handler {
+    activity_loop: AtomicBool,
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -36,7 +37,7 @@ impl EventHandler for Handler {
     // }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        let guilds = match ready.user.guilds(ctx).await {
+        let guilds = match ready.user.guilds(ctx.clone()).await {
             Ok(v) => v.len().to_string(),
             _ => String::from("?"),
         };
@@ -44,6 +45,20 @@ impl EventHandler for Handler {
             "{} is connected & total guilds: {} ",
             ready.user.name, guilds
         );
+        let ctx = Arc::new(ctx);
+
+        if !self.activity_loop.load(Ordering::Relaxed) {
+            let context = Arc::clone(&ctx);
+            tokio::spawn(async move {
+                loop {
+                    // println!("boe");
+                    set_status(Arc::clone(&context)).await;
+                    tokio::time::sleep(Duration::from_secs(15)).await;
+                }
+            });
+        }
+        self.activity_loop.swap(true, Ordering::Relaxed);
+        
     }
 }
 
@@ -78,14 +93,11 @@ async fn main() {
             fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
         }
 
-        // fs::File::create("text.txt").expect("Failed to create text file");
-
-        let a = fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
+        fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
             let mut b = fs::File::create(path.join("data.json")).unwrap();
             b.write(b"{}").unwrap();
             b
         });
-        drop(a);
     }
 
     let http = Http::new_with_token(&token);
@@ -121,7 +133,9 @@ async fn main() {
         .help(&C_HELP);
 
     let mut client = Client::builder(token)
-        .event_handler(Handler)
+        .event_handler(Handler {
+            activity_loop: AtomicBool::new(false),
+        })
         .framework(framework)
         .await
         .expect("Error creating the client");
