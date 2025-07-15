@@ -10,13 +10,13 @@ use sysinfo::{System, SystemExt, ProcessorExt, ProcessExt};
 use serde_json;
 
 
-async fn bytes_to_human(mut bytes: u64) -> String {
+pub fn bytes_to_human(mut bytes: u64) -> String {
 
     let symbols: [char; 8] = ['K','M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
 
     let mut i = 0;
 
-    while bytes > 1024 {
+    while bytes >= 1024 {
         bytes /= 1024;
         i += 1;
     }
@@ -25,7 +25,7 @@ async fn bytes_to_human(mut bytes: u64) -> String {
     format!("{}{}", bytes, unit)
 }
 
-pub async fn seconds_to_human(mut secs: u64) -> String {
+pub fn seconds_to_human(mut secs: u64) -> String {
     
     let mut hours= 0;
     let mut mins = 0;
@@ -91,8 +91,8 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
 
     sys_info.insert("memory_usage", format!(
         "{}B / {}B ({:.1}%)",
-        bytes_to_human(sys.used_memory()).await,
-        bytes_to_human(sys.total_memory()).await,
+        bytes_to_human(sys.used_memory()),
+        bytes_to_human(sys.total_memory()),
         sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
     ));
     
