@@ -15,9 +15,9 @@ use serenity::{
 };
 use tokio::sync::Mutex;
 
-//* add commands to a group, this means you Okkonen!!!!
+//TODO! add commands to a group, this means you Okkonen!!!!
 #[group]
-#[commands(ping, about, info, quit, uptime, fullinfo)]
+#[commands(ping, about, info, quit, uptime, fullinfo, betterping)]
 struct General;
 
 struct Handler {
@@ -53,7 +53,7 @@ impl EventHandler for Handler {
                 loop {
                     // println!("boe");
                     set_status(Arc::clone(&context)).await;
-                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    tokio::time::sleep(Duration::from_secs(10)).await;
                 }
             });
         }
