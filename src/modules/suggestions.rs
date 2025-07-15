@@ -150,7 +150,8 @@ async fn remove_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
                         suggestions.remove(index);
                         let new_data = serde_json::json!({
                             "suggestion_channel": suggestion_channel.0,
-                            "suggestions": suggestions
+                            "suggestions": suggestions,
+                            "welcome_channel": data["welcome_channel"],
                         });
                         db.set(&guild_id.to_string(), new_data).await;
                         msg.reply(ctx, "Suggestion removed").await?;
@@ -225,9 +226,13 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
             }
             // edit the suggestion
             suggestion["suggestion"] = Value::String(edited_suggestion.clone());
-
+            let new_data = serde_json::json!({
+                "suggestion_channel": data["suggestion_channel"].as_u64().unwrap(),
+                "suggestions": suggestions,
+                "welcome_channel": data["welcome_channel"].as_u64()
+            });
             // save to db
-            db.set(&guild_id.to_string(), data.clone()).await;
+            db.set(&guild_id.to_string(), new_data).await; // something is broken here but I'm too sleepy fix it now (doesn't update the suggestion)
 
             // edit the message in the suggestion channel
             let message_id = suggestion["message_id"].as_u64().unwrap();
@@ -375,8 +380,9 @@ async fn set_suggestion_channel(ctx: &Context, msg: &Message) -> CommandResult {
             db.set(&guild_id.to_string(), guild_data).await;
         } else {
             let guild_data = serde_json::json!({
-                "suggestion_channel": channel.0, // should be a u64 for less unwraps. Will later just use the Guild struct to serialize this
+                "suggestion_channel": channel.0, // Will later just use the Guild struct to serialize this, maybe
                 "suggestions": [],
+                "welcome_channel": None::<u64>,
             });
             db.set(&guild_id.to_string(), guild_data).await;
         }
