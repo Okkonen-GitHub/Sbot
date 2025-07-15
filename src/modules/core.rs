@@ -2,14 +2,20 @@ use std::collections::HashSet;
 
 use crate::ShardManagerContainer; // impl in main.rs
 
+use crate::modules::utils::*;
+
 use serenity::{
+    builder::{CreateEmbed, CreateMessage},
     client::bridge::gateway::ShardId,
     framework::standard::{
         help_commands,
         macros::{command, help},
         Args, CommandGroup, CommandResult, HelpOptions,
     },
-    model::{channel::Message, id::UserId},
+    model::{
+        channel::{Embed, Message},
+        id::UserId,
+    },
     prelude::*,
 };
 
@@ -42,22 +48,31 @@ async fn about(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[aliases("latency")]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    let latency = {
-        let data_read = ctx.data.read().await;
-        let shard_manager = data_read.get::<ShardManagerContainer>().unwrap();
-
-        let manager = shard_manager.lock().await;
-        let runners = manager.runners.lock().await;
-
-        let runner = runners.get(&ShardId(ctx.shard_id)).unwrap();
-
-        if let Some(duration) = runner.latency {
-            format!("{:.2} ms", duration.as_millis())
-        } else {
-            "? ms".to_string()
-        }
-    };
+    let latency = get_ping(ctx).await;
     msg.reply(ctx, format!("Bot latency: {}", latency)).await?;
+
+    Ok(())
+}
+
+#[command]
+#[aliases("stats")]
+async fn info(ctx: &Context, msg: &Message) -> CommandResult {
+    let latency = get_ping(ctx).await;
+
+    //TODO reply with an embed with the bot's latency, cpu usage, memory usage, uptime, rust version, serenity version, and the number of shards
+
+    msg.channel_id
+        .send_message(&ctx, |m: &mut CreateMessage| {
+            m.content("testing").embed(|e: &mut CreateEmbed| {
+                e.title("Bot info")
+                    .description("This is a test")
+                    .field("Latency", latency, true);
+
+                e
+            });
+            m
+        })
+        .await?;
 
     Ok(())
 }
