@@ -118,10 +118,14 @@ async fn add_to_queue_url(
     ctx: &Context,
 ) -> CommandResult {
     let mut lock = handler.lock().await;
-    let source = match Restartable::ytdl(url, true).await {
+    let source = match Restartable::ytdl(url, false).await {
         Ok(source) => source.into(),
-        Err(_why) => {
-            msg.reply(&ctx.http, "Error sourcing ffmpeg (try the command again)").await?;
+        Err(why) => {
+            msg.reply(
+                &ctx.http,
+                format!("Error sourcing ffmpeg: {why} (try the command again)"),
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -137,11 +141,14 @@ async fn add_to_queue_search(
     ctx: &Context,
 ) -> CommandResult {
     let mut lock = handler.lock().await;
-    let source = match Restartable::ytdl_search(search, true).await {
+    let source = match Restartable::ytdl_search(search, false).await {
         Ok(source) => source.into(),
         Err(why) => {
-            msg.reply(&ctx.http, format!("Error sourcing ffmpeg: {why} (try the command again)"))
-                .await?;
+            msg.reply(
+                &ctx.http,
+                format!("Error sourcing ffmpeg: {why} (try the command again)"),
+            )
+            .await?;
             return Ok(());
         }
     };
