@@ -1,8 +1,12 @@
-use super::{db::*, utils::{get_pwd, remove_prefix_from_message}, suggestions::Suggestion};
+use super::{
+    db::*,
+    suggestions::Suggestion,
+    utils::{get_pwd, remove_prefix_from_message},
+};
 use serenity::{
     client::Context,
     framework::standard::{macros::command, CommandResult},
-    model::{channel::Message, id::ChannelId, guild::Member},
+    model::{channel::Message, guild::Member, id::ChannelId},
 };
 
 // this could probably be inlined (#[inline(always)]) because it is only used in one place
@@ -19,15 +23,23 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
                 let content = if let Some(welcome_msg) = data["welcome_message"].as_str() {
                     // custom message components are {user_tag}, {user_name}, {guild_name}. Maybe more some day (never)
                     // so we just .replace them in the string
-                    welcome_msg.to_owned()
-                        .replace("{guild_name}", &guild_id.name(ctx).unwrap_or("?".to_owned()))
+                    welcome_msg
+                        .to_owned()
+                        .replace(
+                            "{guild_name}",
+                            &guild_id.name(ctx).unwrap_or("?".to_owned()),
+                        )
                         .replace("{user_name}", &member.user.name)
                         .replace("{user_tag}", &member.user.tag())
-                        // pretty easy to add more
+                    // pretty easy to add more
                 } else {
-                    format!("Welcome to {}, {}", guild_id.name(ctx).unwrap_or("?".to_string()), member.user.name)
+                    format!(
+                        "Welcome to {}, {}",
+                        guild_id.name(ctx).unwrap_or("?".to_string()),
+                        member.user.name
+                    )
                 };
-                // use `let _` to ignore any errors. 
+                // use `let _` to ignore any errors.
                 let _ = ChannelId(welcome_channel).say(ctx, content).await;
             } // if welcome channel is not set then we don't need to do anything
         }
@@ -36,7 +48,6 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
         }
     }
 }
-
 
 // <prefix> setwelcomemessage Welcome to {guild_name}, {user_name}!
 // custom message components are {user_tag}, {user_name}, {guild_name}. Maybe more some day (never)
@@ -47,11 +58,13 @@ async fn set_welcome_message(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = match msg.guild_id {
         Some(id) => id,
         None => {
-            msg.channel_id.say(&ctx.http, "This command can only be used in a server.").await?;
+            msg.channel_id
+                .say(&ctx.http, "This command can only be used in a server.")
+                .await?;
             return Ok(());
         }
     };
-    
+
     // remove prefix
     #[cfg(debug_assertions)]
     let prefix = "d";
@@ -59,7 +72,11 @@ async fn set_welcome_message(ctx: &Context, msg: &Message) -> CommandResult {
     let prefix = "s";
 
     let no_prefix = remove_prefix_from_message(&msg.content, prefix);
-    let welcome_message = no_prefix.split(" ").skip(1).collect::<Vec<&str>>().join(" ");
+    let welcome_message = no_prefix
+        .split(" ")
+        .skip(1)
+        .collect::<Vec<&str>>()
+        .join(" ");
     match db.get(&guild_id.to_string()).await {
         Some(data) => {
             // edit the previous welcome message
@@ -71,7 +88,7 @@ async fn set_welcome_message(ctx: &Context, msg: &Message) -> CommandResult {
             });
             db.set(&guild_id.to_string(), new_data).await;
             msg.reply(ctx, "Welcome message updated.").await?;
-        },
+        }
         None => {
             let new_data = serde_json::json!({
                 "suggestion_channel": None::<u64>,
@@ -80,10 +97,14 @@ async fn set_welcome_message(ctx: &Context, msg: &Message) -> CommandResult {
                 "welcome_message": welcome_message,
             });
             db.set(&guild_id.to_string(), new_data).await;
-            msg.reply(ctx, "Welcome message set, now you should set a welcome channel (`setwelcomechannel`)").await?;
+            msg.reply(
+                ctx,
+                "Welcome message set, now you should set a welcome channel (`setwelcomechannel`)",
+            )
+            .await?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -94,7 +115,9 @@ async fn set_welcome_channel(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = match msg.guild_id {
         Some(id) => id,
         None => {
-            msg.channel_id.say(&ctx.http, "This command can only be used in a server.").await?;
+            msg.channel_id
+                .say(&ctx.http, "This command can only be used in a server.")
+                .await?;
             return Ok(());
         }
     };
@@ -137,19 +160,22 @@ async fn set_welcome_channel(ctx: &Context, msg: &Message) -> CommandResult {
                 "welcome_message": data["welcome_message"]
             });
             db.set(&guild_id.0.to_string(), new_data).await;
-            msg.channel_id.say(&ctx.http, &format!("Welcome channel set to {}", channel)).await?;
+            msg.channel_id
+                .say(&ctx.http, &format!("Welcome channel set to {}", channel))
+                .await?;
         }
         None => {
             // update the db
             let new_data = serde_json::json!({
-                "suggestion_channel": None::<u64>, 
+                "suggestion_channel": None::<u64>,
                 "suggestions": None::<Vec<Suggestion>>,
                 "welcome_channel": channel.0,
                 "welcome_message": None::<String>
             });
             db.set(&guild_id.0.to_string(), new_data).await;
-            msg.channel_id.say(&ctx.http, &format!("Welcome channel set to {}", channel)).await?;
-
+            msg.channel_id
+                .say(&ctx.http, &format!("Welcome channel set to {}", channel))
+                .await?;
         }
     }
 

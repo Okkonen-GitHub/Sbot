@@ -1,6 +1,9 @@
 use serenity::{
-    framework::standard::{macros::{check, command}, Reason, Args, CommandResult},
     client::Context,
+    framework::standard::{
+        macros::{check, command},
+        Args, CommandResult, Reason,
+    },
     model::channel::Message,
 };
 
@@ -19,12 +22,11 @@ async fn admin_check(ctx: &Context, msg: &Message, _args: &mut Args) -> Result<(
         let perms = member.permissions(ctx);
         if let Ok(perms) = perms {
             if perms.administrator() {
-                return Ok(())
+                return Ok(());
             } else {
-                return Err(Reason::Unknown)
+                return Err(Reason::Unknown);
             }
         }
-
     }
     Err(Reason::Unknown)
 }
