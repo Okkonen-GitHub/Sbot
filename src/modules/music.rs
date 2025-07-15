@@ -5,10 +5,12 @@ use serenity::{
     model::channel::Message,
 };
 
+use std::str::from_utf8;
+
 use super::utils::{remove_prefix_from_message, seconds_to_human};
 
 use songbird::{input::Restartable, Call}; // for looping and yt searches (first result) (Restartable::*)
-use std::{sync::Arc, time::Duration};
+use std::{process::Command, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
 #[command]
@@ -110,6 +112,8 @@ async fn deafen(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+// if url has a pattern that seems like a playlist, try to add the whole playlist to queue (one at
+// a time)
 #[inline(always)]
 async fn add_to_queue_url(
     url: String,
@@ -117,19 +121,63 @@ async fn add_to_queue_url(
     msg: &Message,
     ctx: &Context,
 ) -> CommandResult {
-    let mut lock = handler.lock().await;
-    let source = match Restartable::ytdl(url, false).await {
-        Ok(source) => source.into(),
-        Err(why) => {
-            msg.reply(
-                &ctx.http,
-                format!("Error sourcing ffmpeg: {why} (try the command again)"),
-            )
-            .await?;
-            return Ok(());
+    // will return a list of urls if it's a playlist
+    // or a lenght 1 list if it's just a song
+    fn extract_urls(url: &str) -> Vec<String> {
+        let ytdl_args = [
+            "--ignore-config",
+            "--no-warning",
+            "--skip-download",
+            "--flat-playlist",
+            "-I",
+            "0:50",
+            "--print",
+            "webpage_url",
+            url,
+        ];
+        let cmd = Command::new("yt-dlp")
+            .args(&ytdl_args)
+            .output()
+            .expect("Yt-dlp not found");
+        let s = from_utf8(&cmd.stdout).expect("Not parsed");
+
+        let mut result = Vec::with_capacity(10);
+        for line in s.lines() {
+            result.push(line.to_owned());
         }
-    };
-    lock.enqueue_source(source);
+
+        result
+    }
+
+    let mut lock = handler.lock().await;
+    let mut successses = 0;
+    let mut errors = 0;
+
+    let urls = extract_urls(&url);
+
+    for url in urls {
+        match Restartable::ytdl(url, false).await {
+            Ok(source) => {
+                successses += 1;
+                lock.enqueue_source(source.into());
+            }
+            Err(_why) => {
+                errors += 1;
+            }
+        }
+    }
+    if errors > 0 {
+        msg.reply(
+            &ctx.http,
+            format!(
+                "Added {successses} songs to queue,\nFailed on {errors} (Error sourcing ffmpeg)"
+            ),
+        )
+        .await?;
+    } else {
+        msg.reply(&ctx.http, format!("Added {successses} songs to queue."))
+            .await?;
+    }
     Ok(())
 }
 
@@ -153,6 +201,7 @@ async fn add_to_queue_search(
         }
     };
     lock.enqueue_source(source);
+    msg.reply(&ctx.http, "Added song to queue.").await?;
     Ok(())
 }
 
@@ -195,8 +244,6 @@ async fn play(ctx: &Context, msg: &Message) -> CommandResult {
         } else {
             add_to_queue_search(no_prefix, handler_lock, msg, ctx).await?;
         }
-
-        msg.reply(&ctx.http, "Added song to queue.").await?;
     } else {
         let channel_id = guild
             .voice_states
@@ -216,8 +263,6 @@ async fn play(ctx: &Context, msg: &Message) -> CommandResult {
         } else {
             add_to_queue_search(no_prefix, handler, msg, ctx).await?;
         }
-
-        msg.reply(&ctx.http, "Added song to queue.").await?;
     }
 
     Ok(())
