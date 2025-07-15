@@ -2,7 +2,7 @@ mod modules;
 
 use crate::modules::{core::*, owner::*, utils::*, activities::*};
 
-use std::{collections::HashSet, env, fs, io::Write, sync::{atomic::{AtomicBool, Ordering}, Arc }, time::Duration};
+use std::{env, fs, io::Write, sync::{atomic::{AtomicBool, Ordering}, Arc }, time::Duration};
 
 
 use serenity::prelude::*;
@@ -10,7 +10,6 @@ use serenity::{
     async_trait,
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::group, StandardFramework},
-    http::Http,
     model::gateway::Ready,
 };
 use tokio::sync::Mutex;
@@ -99,27 +98,8 @@ async fn main() {
             b
         });
     }
+    let (owners, bot_id) = get_owners(&token).await;
 
-    let http = Http::new_with_token(&token);
-
-    // fetch your bot's owners and id
-    let (owners, bot_id) = match http.get_current_application_info().await {
-        Ok(info) => {
-            let mut owners = HashSet::new();
-            if let Some(team) = info.team {
-                for member in team.members {
-                    owners.insert(member.user.id);
-                }
-            } else {
-                owners.insert(info.owner.id);
-            }
-            match http.get_current_user().await {
-                Ok(bot_id) => (owners, bot_id.id),
-                Err(why) => panic!("Could not access the bot id: {:?}", why),
-            }
-        }
-        Err(why) => panic!("Could not access application info: {:?}", why),
-    };
     // println!("{:?}", owners);
     let framework = StandardFramework::new()
         .configure(|c| {
