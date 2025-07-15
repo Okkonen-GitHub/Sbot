@@ -11,7 +11,7 @@ use super::utils::{remove_prefix_from_message, seconds_to_human};
 
 use songbird::{input::Restartable, Call}; // for looping and yt searches (first result) (Restartable::*)
 use std::{process::Command, sync::Arc, time::Duration};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::interval};
 
 #[command]
 #[only_in(guilds)]
@@ -264,7 +264,29 @@ async fn play(ctx: &Context, msg: &Message) -> CommandResult {
             add_to_queue_search(no_prefix, handler, msg, ctx).await?;
         }
     }
+    auto_leave(ctx, msg).await?;
+    Ok(())
+}
 
+// Todo: Cache servers where auto_leave is already awaited
+async fn auto_leave(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).unwrap();
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation")
+        .clone();
+
+    if let Some(handler_lock) = manager.get(guild.id) {
+        const FIVE_MINS: u64 = 5 * 60;
+        let mut interval = interval(Duration::from_secs(FIVE_MINS));
+        loop {
+            interval.tick().await;
+            if handler_lock.lock().await.queue().is_empty() {
+                let _ = manager.remove(guild.id).await;
+                break;
+            }
+        }
+    }
     Ok(())
 }
 
