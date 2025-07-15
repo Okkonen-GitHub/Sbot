@@ -107,6 +107,7 @@ struct Handler {
 //
 
 fn event_listeners(
+    // ctx: &Context<'_>,
     event: &FullEvent,
     _framework: poise::FrameworkContext<'_, Data, Error>,
     _user_data: &Data,
@@ -197,6 +198,9 @@ async fn main() {
             modules::music::deafen(),
         ],
         prefix_options,
+        event_handler: |_ctx, event, framework, data| {
+            Box::pin(async move { event_listeners(event, framework, data) })
+        },
         ..Default::default()
     };
     let songbird = songbird::Songbird::serenity();

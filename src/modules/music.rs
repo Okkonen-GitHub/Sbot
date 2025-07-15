@@ -11,7 +11,6 @@ use std::{process::Command, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, time::interval};
 
 #[poise::command(prefix_command, slash_command)]
-// #[poise::]
 pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
@@ -41,7 +40,7 @@ pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 
     match ctx.data().songbird.get(guild_id) {
         Some(_) => {
-            let _a = ctx.data().songbird.remove(guild_id).await;
+            ctx.data().songbird.remove(guild_id).await?;
         }
         None => (),
     }
@@ -50,7 +49,6 @@ pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 }
 #[poise::command(prefix_command, slash_command, aliases("unmute"))]
 // #[only_in(guilds)]
-// #[aliases("unmute")]
 pub async fn mute(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
@@ -131,7 +129,8 @@ async fn add_to_queue_url(
     for url in urls {
         let source = YoutubeDl::new(client.clone(), url);
         successses += 1;
-        lock.enqueue(source.into()).await;
+        // lock.enqueue(source.into()).await;
+        lock.play_input(source.into());
     }
     ctx.reply(format!("Added {successses} song(s) to queue."))
         .await?;
@@ -147,8 +146,9 @@ async fn add_to_queue_search(
     let client = reqwest::Client::new();
     let mut lock = handler.lock().await;
     let source = YoutubeDl::new_search(client, search);
-    let queue = lock.enqueue_input(source.into()).await;
-    queue.play()?;
+    // let queue = lock.enqueue_input(source.into()).await;
+    // queue.play()?;
+    lock.play_input(source.into());
 
     ctx.reply("Added song to queue.").await?;
     Ok(())
@@ -193,7 +193,6 @@ pub async fn play(
             add_to_queue_url(source, handler, ctx).await?;
         } else {
             add_to_queue_search(source, handler, ctx).await?;
-            ctx.reply("Added song to queue.").await?;
         }
     }
     auto_leave(ctx).await?;
@@ -210,7 +209,8 @@ async fn auto_leave(ctx: Context<'_>) -> Result<(), Error> {
         loop {
             interval.tick().await;
             if handler_lock.lock().await.queue().is_empty() {
-                let _ = ctx.data().songbird.remove(guild_id).await;
+                // let _ = ctx.data().songbird.remove(guild_id).await;
+                dbg!("fuk");
                 break;
             }
         }
