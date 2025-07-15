@@ -58,21 +58,47 @@ async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 }
 #[command]
 #[only_in(guilds)]
+#[aliases("unmute")]
 async fn mute(ctx: &Context, msg: &Message) -> CommandResult {
     let guild = msg.guild(&ctx.cache).await.unwrap();
-    let manager = songbird::get(ctx).await.expect("Songbird voice client placed in at initialisation").clone();
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird voice client placed in at initialisation")
+        .clone();
 
     match manager.get(guild.id) {
         Some(call) => {
             let mut lock = call.lock().await;
             let is_mute = lock.is_mute();
             lock.mute(!is_mute).await?;
-        },
+        }
         None => {
             msg.reply(ctx, "Not in a voice channel").await?;
         }
     }
 
+    Ok(())
+}
 
+#[command]
+#[only_in(guilds)]
+#[aliases("undeafen")]
+async fn deafen(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird voice client placed in at initialisation")
+        .clone();
+
+    match manager.get(guild.id) {
+        Some(call) => {
+            let mut lock = call.lock().await;
+            let is_deafened = lock.is_deaf();
+            lock.deafen(!is_deafened).await?;
+        }
+        None => {
+            msg.reply(ctx, "Not in a voice channel").await?;
+        }
+    }
     Ok(())
 }
