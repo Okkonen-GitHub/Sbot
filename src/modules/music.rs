@@ -455,7 +455,10 @@ async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
                 m.embed(|e| {
                     e.title("Current queue").description(queue_msg).footer(
                         |f: &mut CreateEmbedFooter| {
-                            f.text(format!("In total {} songs in queue currently (showing the first ten only)", queuelen))
+                            f.text(format!(
+                                "In total {} songs in queue currently (showing the first ten only)",
+                                queuelen
+                            ))
                         },
                     )
                 })
