@@ -1,7 +1,8 @@
-use std::collections::HashSet;
+use std::{collections::HashSet};
 
 use crate::modules::utils::*;
 
+#[cfg(debug_assertions)]
 use serde_json::{json};
 
 use serenity::{
@@ -65,6 +66,8 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[aliases("stats")]
 async fn info(ctx: &Context, msg: &Message) -> CommandResult {
+    const BOT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
     let latency = get_ping(ctx).await;
 
     //TODO reply with an embed with the bot's latency, cpu usage, memory usage, uptime, rust version, serenity version, and the number of shards
@@ -81,19 +84,69 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
-            m.content("testing")
-            .embed(|e: &mut CreateEmbed| {
-                e.title("Bot info")
-                    .author(
+            m.embed(|e: &mut CreateEmbed| {
+                e.author(
+                    | a| {
+                        a.name("Info");
+                        a.icon_url(user.avatar_url().unwrap_or("https://64.media.tumblr.com/126d5e1ad49ade5ff4b052d8441943aa/tumblr_py6pq79HeI1xny0zko1_540.png".to_string()))
+                    }
+                )
+                .description(format!("Version: {}", BOT_VERSION))
+                .field("Latency", latency, true)
+                .field("Uptime", &uptime, true)
+                .field("Guilds", &guilds, true)
+                .footer(
+                    |f| {
+                        f.text(format!("RAM: {}", memory_usage));
+                        f.icon_url("https://media.discordapp.net/attachments/514213558549217330/514345278669848597/8yx98C.gif")
+                    },
+                );
+                e
+            });
+            m
+        })
+        .await?;
+
+    Ok(())
+}
+
+#[command]
+#[aliases("inful", "infofull")]
+async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
+
+    const BOT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+    let latency = get_ping(ctx).await;
+
+
+    let sysinfo = get_sys(true).await;
+
+    let memory_usage = sysinfo.get("memory_usage").unwrap();
+    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
+    
+    let user = ctx.cache.current_user().await; // for the profile pic in the embed
+
+    let cpu_usage = sysinfo.get("cpu_usage").unwrap();
+    let os_info = sysinfo.get("os_info").unwrap();
+    let thread_count = sysinfo.get("thread_count").unwrap();
+
+    let guilds = ctx.cache.guilds().await.len();
+    msg.channel_id
+        .send_message(&ctx, |m: &mut CreateMessage| {
+            m.embed(|e: &mut CreateEmbed| {
+                e.author(
                         | a| {
-                            a.name("Info");
+                            a.name("Bot Info:");
                             a.icon_url(user.avatar_url().unwrap_or("https://64.media.tumblr.com/126d5e1ad49ade5ff4b052d8441943aa/tumblr_py6pq79HeI1xny0zko1_540.png".to_string()))
                         }
                     )
-                    .description("This is a test")
-                    .field("Latency", latency, true)
-                    .field("Uptime", &uptime, true)
-                    .field("Guilds", &guilds, true)
+                    .description(format!("Version: {}", BOT_VERSION))
+                    .field("Latency:", latency, true)
+                    .field("Uptime:", &uptime, true)
+                    .field("Guilds:", &guilds, true)
+                    .field("Threads: ", &thread_count, true)
+                    .field("CPU usage:", &cpu_usage, true)
+                    .field("OS: ", &os_info, true)
                     .footer(
                         |f| {
                             f.text(format!("RAM: {}", memory_usage));
@@ -109,6 +162,7 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+#[cfg(debug_assertions)]
 #[command]
 async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     
@@ -121,6 +175,7 @@ async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     Ok(())
 }
 
+#[cfg(debug_assertions)]
 #[command]
 async fn getnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     
@@ -133,6 +188,7 @@ async fn getnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     Ok(())
 }
 
+#[cfg(debug_assertions)]
 #[command]
 async fn getall(ctx: &Context, msg: &Message) -> CommandResult {
     let path = get_pwd().join("data/data.json");
