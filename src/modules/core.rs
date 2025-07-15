@@ -95,3 +95,11 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     Ok(())
 }
+
+#[command]
+async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    
+    println!("{}", &args.single::<f64>()?);
+    let db = JsonDb::new()
+    Ok(())
+}
