@@ -10,34 +10,41 @@ use serde_json;
 
 
 async fn bytes_to_human(mut bytes: u64) -> String {
-    let mut unit = 'K';
 
-    if bytes >= 1024 {
-        bytes /= 1024;
-        unit = 'M';
-    }
+    let symbols: [char; 8] = ['K','M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
 
-    if bytes >= 1024 {
-        bytes /= 1024;
-        unit = 'G';
-    }
+    let mut i = 0;
 
-    if bytes >= 1024 {
+    while bytes > 1024 {
         bytes /= 1024;
-        unit = 'T';
+        i += 1;
     }
-
-    if bytes >= 1024 {
-        bytes /= 1024;
-        unit = 'P';
-    }
-
-    if bytes >= 1024 {
-        bytes /= 1024;
-        unit = 'E';
-    }
+    let unit = symbols[i];
 
     format!("{}{}", bytes, unit)
+}
+
+pub async fn seconds_to_human(mut secs: u64) -> String {
+    
+    let mut hours = 0;
+    let mut mins = 0;
+
+    while secs >= 3600 {
+        hours += 1;
+        secs -= 3600;
+    }
+
+    while secs >= 60 {
+        mins += 1;
+        secs -= 60;
+    }
+    if hours > 0 {
+        format!("{}h {}m", hours, mins)
+    } else if mins > 0 {
+        format!("{}m {}s", mins, secs)
+    } else {
+        format!("{}s", secs)
+    }
 }
 
 pub fn get_pwd() -> PathBuf {
@@ -80,14 +87,16 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
         sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
     ));
     
-    let mut cpu_usage = Vec::new();
-    for core in sys.processors() {
-        cpu_usage.push(
-            core.cpu_usage()
-        )     
-    }
-
+    
     if full {
+        let mut cpu_usage = Vec::new();
+        for core in sys.processors() {
+            cpu_usage.push(
+                core.cpu_usage()
+            )     
+        }
+        sys_info.insert("os_info", sys.long_os_version().unwrap_or(String::from("?")));
+
         sys_info.insert("thread_count", format!("{}", sys.processors().len()));
 
         let cpu_usage_str = String::from_iter(cpu_usage.iter().map(|usage| format!("{:.1}%", usage)));
@@ -95,19 +104,10 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
         // for val in &cpu_usage{
         //     cpu_usage_str.push_str(&format!("\n{:.1}%", val));
         // }
-    } else {
-        let mut avg = 0.0;
-
-        for val in &cpu_usage {
-            avg += val;
-        }
-        avg /= cpu_usage.len() as f32;
-
-        sys_info.insert("cpu_usage", format!("{:.1}%", avg));
     }
 
     if let Some(process) = sys.process(sys.processes_by_name("sbot").nth(0).unwrap().pid()) {
-        sys_info.insert("uptime", format!("{} s", &process.run_time()));
+        sys_info.insert("uptime", format!("{}", &process.run_time()));
     } else {
         sys_info.insert("uptime", "? s".to_string());
     }
@@ -116,7 +116,7 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
 }
 
 pub struct JsonDb {
-    pub path: PathBuf,
+    path: PathBuf,
 }
 
 impl JsonDb {
@@ -152,6 +152,17 @@ impl JsonDb {
             let json_str = serde_json::to_string(&json).unwrap();
 
             fs::write(&self.path, json_str).unwrap();
+        }
+    }
+    pub async fn get_all(&self) -> Option<serde_json::Map<String, serde_json::Value>> {
+        let file = fs::read_to_string(&self.path);
+
+        if let Ok(file) = file {
+            let json: serde_json::Value = serde_json::from_str(&file).unwrap();
+
+            Some(json.as_object().unwrap().to_owned())
+        } else {
+            None
         }
     }
 }
