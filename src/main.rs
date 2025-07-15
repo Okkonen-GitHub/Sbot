@@ -1,4 +1,5 @@
 mod modules;
+mod commands;
 
 use crate::modules::checks::*;
 use crate::modules::music::*;
@@ -14,18 +15,18 @@ use std::{
     time::Duration,
 };
 
-use serenity::model::id::GuildId;
 use serenity::prelude::*;
 use serenity::{
     async_trait,
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::group, StandardFramework},
     model::{gateway::Ready, guild::Member},
+    model::application::interaction::{Interaction,InteractionResponseType},
+    model::application::command::Command
 };
 use tokio::sync::Mutex;
 
 use songbird::SerenityInit;
-use serenity::client::bridge::voice::VoiceGatewayManager;
 
 //TODO! add commands to a group, this means you Okkonen!!!!
 //TODO: Add more groups (suggestions, misc, owner, (moderation), etc)
@@ -81,6 +82,15 @@ impl EventHandler for Handler {
             "{} is connected & total guilds: {} ",
             ready.user.name, guilds
         );
+
+        let guild_command = Command::create_global_application_command(&ctx.http, |command| {
+            commands::ping::register(command)
+
+        })
+        .await;
+
+        println!("I created the following global slash command: {:#?}", guild_command);
+
         let ctx = Arc::new(ctx);
 
         if !self.activity_loop.load(Ordering::Relaxed) {
@@ -103,6 +113,30 @@ impl EventHandler for Handler {
         new_member: Member,
     ) -> () {
         say_hello(&ctx, &new_member).await;
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::ApplicationCommand(command) = interaction {
+            println!("Received command interaction: {:#?}", command);
+
+            let content = match command.data.name.as_str() {
+                "ping" => commands::ping::run(&command.data.options),
+                // "id" => commands::id::run(&command.data.options),
+                // "attachmentinput" => commands::attachmentinput::run(&command.data.options),
+                _ => "not implemented :(".to_string(),
+            };
+
+            if let Err(why) = command
+                .create_interaction_response(&ctx.http, |response| {
+                    response
+                        .kind(InteractionResponseType::ChannelMessageWithSource)
+                        .interaction_response_data(|message| message.content(content))
+                })
+                .await
+            {
+                println!("Cannot respond to slash command: {}", why);
+            }
+        }
     }
 }
 
