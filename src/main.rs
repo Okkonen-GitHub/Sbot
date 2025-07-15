@@ -1,6 +1,6 @@
 mod modules;
 
-use crate::modules::{core::*, owner::*, utils::*, activities::*};
+use crate::modules::{core::*, owner::*, utils::*, activities::*, suggestions::*};
 
 use std::{env, fs, io::Write, sync::{atomic::{AtomicBool, Ordering}, Arc }, time::Duration};
 
@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 
 //TODO! add commands to a group, this means you Okkonen!!!!
 #[group]
-#[commands(ping, about, info, quit, uptime, fullinfo, betterping)]
+#[commands(ping, about, info, quit, uptime, fullinfo, betterping, suggest, set_suggestion_channel)]
 struct General;
 
 struct Handler {
@@ -99,6 +99,14 @@ async fn main() {
 
         fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
             let mut b = fs::File::create(path.join("data.json")).unwrap();
+            b.write(b"{}").unwrap();
+            b
+        });
+        let path = get_pwd().join("data/");
+        println!("{:?}", &path);
+        fs::File::open(path.join("guilds.json")).unwrap_or_else(|_| {
+            println!("wtf");
+            let mut b = fs::File::create(path.join("guilds.json")).unwrap();
             b.write(b"{}").unwrap();
             b
         });
