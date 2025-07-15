@@ -1,8 +1,8 @@
 mod modules;
 
-use crate::modules::{core::*, owner::*};
+use crate::modules::{core::*, owner::*, utils::*};
 
-use std::{collections::HashSet, env, sync::Arc, fs};
+use std::{collections::HashSet, env, sync::Arc, fs, io::Write};
 
 
 
@@ -18,7 +18,7 @@ use tokio::sync::Mutex;
 
 // add commands to a group!
 #[group]
-#[commands(ping, about, info, quit, addnum)]
+#[commands(ping, about, info, quit, addnum, getnum)]
 struct General;
 
 struct Handler;
@@ -68,7 +68,7 @@ async fn main() {
         prefix = "d"; // d for now...
     }
 
-    let path = env::current_dir().unwrap();
+    let path = get_pwd();
 
     // println!("{:?}", &path);
 
@@ -79,9 +79,10 @@ async fn main() {
     // fs::File::create("text.txt").expect("Failed to create text file");
 
     let a = fs::File::open(path.join("data/data.json")).unwrap_or_else(|_| {
-        fs::File::create(path.join("data/data.json")).unwrap()
+        let mut b = fs::File::create(path.join("data/data.json")).unwrap();
+        b.write(b"{}").unwrap();
+        b
     });
-    
     drop(a);
 
 

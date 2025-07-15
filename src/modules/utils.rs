@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, fs, path::PathBuf, env};
 
 use crate::ShardManagerContainer;
 
@@ -38,6 +38,10 @@ async fn bytes_to_human(mut bytes: u64) -> String {
     }
 
     format!("{}{}", bytes, unit)
+}
+
+pub fn get_pwd() -> PathBuf {
+    env::current_dir().unwrap()
 }
 
 pub async fn get_ping(ctx: &Context) -> String {
@@ -111,17 +115,17 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     sys_info
 }
 
-struct JsonDb {
-    pub path: &'static str,
+pub struct JsonDb {
+    pub path: PathBuf,
 }
 
 impl JsonDb {
-    pub fn new(path: &'static str) -> Self {
+    pub fn new(path: PathBuf) -> Self {
         JsonDb { path }
     }
 
     pub async fn get(&self, key: &str) -> Option<serde_json::Value> {
-        let file = fs::read_to_string(Path::new(&self.path));
+        let file = fs::read_to_string(&self.path);
 
         if let Ok(file) = file {
             let json: serde_json::Value = serde_json::from_str(&file).unwrap();
@@ -137,9 +141,10 @@ impl JsonDb {
     }
 
     pub async fn set(&self, key: &str, value: serde_json::Value) {
-        let file = fs::read_to_string(Path::new(&self.path));
+        let file = fs::read_to_string(&self.path);
 
         if let Ok(file) = file {
+            println!("HELLO {}", &file);
             let mut json: serde_json::Value = serde_json::from_str(&file).unwrap();
 
             json[key] = value;
