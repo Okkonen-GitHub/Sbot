@@ -17,3 +17,7 @@ Run by using `cargo run`
 #### production
 
 Run by using `cargo run --release`
+
+- Tokio & other useful libs
+- Avatar [vecteezy](https://www.vecteezy.com/free-vector/web)
+
