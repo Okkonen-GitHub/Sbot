@@ -37,16 +37,26 @@ use songbird::SerenityInit;
     uptime,
     fullinfo,
     betterping,
+    testadmin
+)]
+struct General;
+
+#[group]
+#[commands(
     suggest,
     set_suggestion_channel,
     edit_suggestion,
     accept_suggestion,
     remove_suggestion,
+)]
+struct Suggestions;
+
+#[group]
+#[commands(
     set_welcome_channel,
     set_welcome_message,
-    testadmin
 )]
-struct General;
+struct Welcome;
 
 #[group]
 #[commands(
@@ -161,6 +171,8 @@ async fn main() {
         })
         .group(&GENERAL_GROUP)
         .group(&MUSIC_GROUP)
+        .group(&SUGGESTIONS_GROUP)
+        .group(&WELCOME_GROUP)
         .help(&C_HELP);
 
     // let intents = GatewayIntents::GUILDS
