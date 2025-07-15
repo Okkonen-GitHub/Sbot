@@ -66,19 +66,13 @@ async fn betterping(ctx: &Context, msg: &Message) -> CommandResult {
         now.elapsed().as_millis() as f64
     };
     // "Websocket latency: 121 ms"
-    let latency = format!("Websocket latency: {}", latency);
+    let latency = format!("Websocket latency: {}\nGET latency: {}", latency, get_latency);
+    let duration = Instant::now();
     let mut message = msg.reply(ctx, &latency).await?;
-    // "GET latency: 58 ms"
-    let get_latency = format!("{}\nGET latency: {} ms", latency, get_latency);
-    let post_latency ={
-        let duration = Instant::now();
-        message.edit(&ctx, |m| {
-            m.content(&get_latency)
-        }).await?;
-        duration.elapsed().as_millis() as f64
-    };
-    // "POST latency: 246 ms"
-    let post_latency = format!("{}\nPOST latency: {} ms", get_latency, post_latency);
+    let elapsed = duration.elapsed().as_millis();
+
+    let post_latency = format!("POST latency: {}", elapsed);
+    let post_latency = format!("{}\nPOST latency: {} ms", latency, post_latency);
     message.edit(&ctx, |m| {
         m.content(post_latency)
     }).await?;
