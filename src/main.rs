@@ -54,10 +54,18 @@ impl TypeMapKey for ShardManagerContainer {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to load .env");
+    
+    let token: String;
+    let prefix: &str;
 
-    let token = env::var("DISCORD_TOKEN").expect("token");
+    if cfg!(release) {
+        token = env::var("DISCORD_TOKEN").expect("token");
+        prefix = "s";
+    } else { // development mode
+        token = env::var("DEV_TOKEN").expect("token");
+        prefix = "d"; // d for now...
+    }
 
-    let prefix = "s";
 
     let http = Http::new_with_token(&token);
 
