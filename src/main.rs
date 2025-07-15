@@ -140,7 +140,7 @@ async fn main() {
         // println!("{:?}", &path);
 
         if !path.exists() {
-            fs::create_dir(&path.join("data/")).expect("Failed to create data directory");
+            fs::create_dir(&path).expect("Failed to create data directory");
         }
 
         fs::File::open(path.join("data.json")).unwrap_or_else(|_| {
