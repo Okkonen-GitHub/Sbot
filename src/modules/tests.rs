@@ -1,5 +1,3 @@
-
-
 #[cfg(test)]
 mod tests {
 
@@ -24,22 +22,20 @@ mod tests {
         let actual = seconds_to_human(secs);
         assert_eq!(expected, actual);
     }
-    
+
     #[test]
     fn test_byte_conversion() {
         let bytes = 1024;
         let expected = "1M";
         let actual = bytes_to_human(bytes);
         assert_eq!(expected, actual);
-        let bytes = 1024*1024;
+        let bytes = 1024 * 1024;
         let expected = "1G";
         let actual = bytes_to_human(bytes);
         assert_eq!(expected, actual);
-        let bytes = 1024*100;
+        let bytes = 1024 * 100;
         let expected = "100M";
         let actual = bytes_to_human(bytes);
         assert_eq!(expected, actual);
-
     }
-
 }
