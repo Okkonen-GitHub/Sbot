@@ -116,7 +116,7 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .help(&C_HELP);
 
-    let mut client = Client::builder(token)
+    let mut client = Client::builder(token, GatewayIntents::default())
         .event_handler(Handler {
             activity_loop: AtomicBool::new(false),
         })
