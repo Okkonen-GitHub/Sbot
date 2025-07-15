@@ -6,6 +6,7 @@ use serenity::client::{bridge::gateway::ShardId, Context};
 
 use sysinfo::{System, SystemExt, ProcessorExt, ProcessExt};
 
+#[cfg(debug_assertions)]
 use serde_json;
 
 
@@ -99,7 +100,7 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
 
         sys_info.insert("thread_count", format!("{}", sys.processors().len()));
 
-        let cpu_usage_str = String::from_iter(cpu_usage.iter().map(|usage| format!("{:.1}%", usage)));
+        let cpu_usage_str = String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
         sys_info.insert("cpu_usage", cpu_usage_str);
         // for val in &cpu_usage{
         //     cpu_usage_str.push_str(&format!("\n{:.1}%", val));
@@ -115,10 +116,12 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     sys_info
 }
 
+#[cfg(debug_assertions)]
 pub struct JsonDb {
     path: PathBuf,
 }
 
+#[cfg(debug_assertions)]
 impl JsonDb {
     pub fn new(path: PathBuf) -> Self {
         JsonDb { path }
