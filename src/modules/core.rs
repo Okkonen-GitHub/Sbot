@@ -1,20 +1,20 @@
 use std::collections::HashSet;
 
+use crate::ShardManagerContainer; // impl in main.rs
 
 use serenity::{
     prelude::*,
+    client::bridge::gateway::{ShardId},
     framework::standard::{
         help_commands,
         macros::{help, command},
         HelpOptions,
-        StandardFramework,
         CommandResult,
-        CommandOptions,
         Args, CommandGroup,
         
     }, 
     model::{
-        channel::{Message, Channel},
+        channel::Message,
         id::UserId
     }
 };
@@ -53,3 +53,28 @@ async fn about(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 
+#[command]
+#[aliases("latency")]
+async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
+    let latency = {
+        let data_read = ctx.data.read().await;
+        let shard_manager = data_read.get::<ShardManagerContainer>().unwrap();
+
+        let manager = shard_manager.lock().await;
+        let runners = manager.runners.lock().await;
+
+        let runner = runners.get(&ShardId(ctx.shard_id)).unwrap();
+
+        if let Some(duration) = runner.latency {
+            format!("{:.2} ms", duration.as_millis())
+        } else {
+            "? ms".to_string()
+        }
+    };
+    msg.reply(
+        ctx,
+        format!("Bot latency: {}", latency)
+    ).await?;
+
+    Ok(())
+}
