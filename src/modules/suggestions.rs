@@ -1,5 +1,5 @@
-use super::db::*;
 use super::utils::{get_pwd, remove_prefix_from_message};
+use super::{checks::ADMIN_CHECK, db::*};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serenity::{
@@ -323,10 +323,9 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-//TODO only server admins should be able to use this command
-//TODO implement checks: #[check(Admin)] or #[admin_only]
 // Almost fully made by copilot but pretty basic - just slightly different to edit_suggestion
 #[command]
+#[checks(Admin)]
 #[aliases("acceptsuggestion", "as", "accept")]
 async fn accept_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     // check if command was used in a guild
@@ -411,9 +410,8 @@ async fn accept_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-//TODO only server admins should be able to use this command
-//TODO implement checks: #[check(Admin)] or #[admin_only]
 #[command]
+#[checks(Admin)]
 #[aliases("suggestions")]
 async fn set_suggestion_channel(ctx: &Context, msg: &Message) -> CommandResult {
     // check if user has specified a channel (a channel id or a channel mention, too lazy to implement search by channel name)

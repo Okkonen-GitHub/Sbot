@@ -1,4 +1,5 @@
 use super::{
+    checks::ADMIN_CHECK,
     db::*,
     suggestions::Suggestion,
     utils::{get_pwd, remove_prefix_from_message},
@@ -52,6 +53,7 @@ pub async fn say_hello(ctx: &Context, member: &Member) {
 // <prefix> setwelcomemessage Welcome to {guild_name}, {user_name}!
 // custom message components are {user_tag}, {user_name}, {guild_name}. Maybe more some day (never)
 #[command]
+#[checks(Admin)]
 #[aliases("welcomemessage", "setwelcomemsg", "setwelcomemessage", "sms")]
 async fn set_welcome_message(ctx: &Context, msg: &Message) -> CommandResult {
     let db = JsonDb::new(get_pwd().join("data/guilds.json"));
@@ -109,6 +111,7 @@ async fn set_welcome_message(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+#[checks(Admin)]
 #[aliases("welcomechannel", "setwelcomechannel", "smc")]
 async fn set_welcome_channel(ctx: &Context, msg: &Message) -> CommandResult {
     let db = JsonDb::new(get_pwd().join("data/guilds.json"));
