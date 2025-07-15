@@ -1,9 +1,6 @@
-use std::{collections::HashSet};
+use std::{collections::HashSet, time::Instant};
 
 use crate::modules::utils::*;
-
-#[cfg(debug_assertions)]
-use serde_json::{json};
 
 use serenity::{
     builder::{CreateEmbed, CreateMessage},
@@ -12,10 +9,7 @@ use serenity::{
         macros::{command, help},
         Args, CommandGroup, CommandResult, HelpOptions,
     },
-    model::{
-        channel::{Message},
-        id::UserId,
-    },
+    model::{channel::Message, id::UserId},
     prelude::*,
 };
 
@@ -55,10 +49,36 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+#[aliases("bping")]
+async fn betterping(ctx: &Context, msg: &Message) -> CommandResult {
+    let latency = get_ping(ctx).await;
+    let get_latency = {
+        let now = Instant::now();
+        // `let _` to supress any errors.
+        let _ = reqwest::get("https://discordapp.com/api/v6/gateway").await;
+        now.elapsed().as_millis() as f64
+    };
+    // "Websocket latency: 121 ms"
+    let latency = format!(
+        "Websocket latency: {}\nGET latency: {} ms",
+        latency, get_latency
+    );
+    let duration = Instant::now();
+    let mut message = msg.reply(ctx, &latency).await?;
+    let elapsed = duration.elapsed().as_millis();
+
+    let post_latency = format!("POST latency: {} ms", elapsed);
+    let full_latency = format!("{}\n{}", latency, post_latency);
+    message.edit(&ctx, |m| m.content(full_latency)).await?;
+
+    Ok(())
+}
+
+#[command]
 #[aliases("up")]
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let sysinfo = get_sys(false).await;
-    let uptime: String = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
+    let uptime: String = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
     msg.reply(ctx, format!("{uptime}")).await?;
     Ok(())
 }
@@ -70,17 +90,17 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 
     let latency = get_ping(ctx).await;
 
-    //TODO reply with an embed with the bot's latency, cpu usage, memory usage, uptime, rust version, serenity version, and the number of shards
+    //TODO rust version, serenity version, and the number of shards
 
     let sysinfo = get_sys(false).await;
 
     // let cpu_usage = sysinfo.get("cpu_usage").unwrap();
     let memory_usage = sysinfo.get("memory_usage").unwrap();
-    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
-    
-    let user = ctx.cache.current_user().await; // for the profile pic in the embed
+    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
 
-    let guilds = ctx.cache.guilds().await.len();
+    let user = ctx.cache.current_user(); // for the profile pic in the embed
+
+    let guilds = ctx.cache.guilds().len();
 
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
@@ -113,24 +133,22 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[aliases("inful", "infofull")]
 async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
-
     const BOT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
     let latency = get_ping(ctx).await;
 
-
     let sysinfo = get_sys(true).await;
 
     let memory_usage = sysinfo.get("memory_usage").unwrap();
-    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap()).await;
-    
-    let user = ctx.cache.current_user().await; // for the profile pic in the embed
+    let uptime = seconds_to_human(sysinfo.get("uptime").unwrap().parse::<u64>().unwrap());
+
+    let user = ctx.cache.current_user(); // for the profile pic in the embed
 
     let cpu_usage = sysinfo.get("cpu_usage").unwrap();
     let os_info = sysinfo.get("os_info").unwrap();
     let thread_count = sysinfo.get("thread_count").unwrap();
 
-    let guilds = ctx.cache.guilds().await.len();
+    let guilds = ctx.cache.guilds().len();
     msg.channel_id
         .send_message(&ctx, |m: &mut CreateMessage| {
             m.embed(|e: &mut CreateEmbed| {
@@ -158,43 +176,6 @@ async fn fullinfo(ctx: &Context, msg: &Message) -> CommandResult {
             m
         })
         .await?;
-
-    Ok(())
-}
-
-#[cfg(debug_assertions)]
-#[command]
-async fn addnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    
-    let num = &args.single::<f64>()?;
-    let path = get_pwd().join("data/data.json");
-    let db = JsonDb::new(path);
-    db.set(&format!("num{}", num), json!(num)).await;
-    
-    msg.reply(ctx, "Added to the db").await?;
-    Ok(())
-}
-
-#[cfg(debug_assertions)]
-#[command]
-async fn getnum(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    
-    let num = &args.single::<f64>()?;
-    let path = get_pwd().join("data/data.json");
-    let db = JsonDb::new(path);
-    let val = db.get(&format!("num{}", num)).await;
-    msg.reply(ctx, format!("{}", val.unwrap())).await?;
-    
-    Ok(())
-}
-
-#[cfg(debug_assertions)]
-#[command]
-async fn getall(ctx: &Context, msg: &Message) -> CommandResult {
-    let path = get_pwd().join("data/data.json");
-    let db = JsonDb::new(path);
-    let val = db.get_all().await;
-    msg.reply(ctx, format!("{:?}", val.unwrap())).await?;
 
     Ok(())
 }

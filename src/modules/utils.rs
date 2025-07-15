@@ -1,22 +1,27 @@
-use std::{collections::HashMap, fs, path::PathBuf, env};
-
+use std::{
+    collections::{HashMap, HashSet},
+    env,
+    path::PathBuf,
+    time::Duration,
+};
+// use serenity::builder::{CreateMessage, CreateEmbed};
 use crate::ShardManagerContainer;
 
-use serenity::client::{bridge::gateway::ShardId, Context};
+use serenity::{
+    client::{bridge::gateway::ShardId, Context},
+    http::Http,
+    model::id::UserId,
+};
 
-use sysinfo::{System, SystemExt, ProcessorExt, ProcessExt};
+use sysinfo::{CpuExt, ProcessExt, System, SystemExt};
 
-#[cfg(debug_assertions)]
-use serde_json;
-
-
-async fn bytes_to_human(mut bytes: u64) -> String {
-
-    let symbols: [char; 8] = ['K','M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
+pub fn bytes_to_human(mut bytes: u64) -> String {
+    let symbols: [char; 9] = ['\0', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
 
     let mut i = 0;
 
-    while bytes > 1024 {
+    while bytes >= 1024 {
+        // could use a bitsift here but too lazy to do that
         bytes /= 1024;
         i += 1;
     }
@@ -25,15 +30,14 @@ async fn bytes_to_human(mut bytes: u64) -> String {
     format!("{}{}", bytes, unit)
 }
 
-pub async fn seconds_to_human(mut secs: u64) -> String {
-    
-    let mut hours= 0;
+pub fn seconds_to_human(mut secs: u64) -> String {
+    let mut hours = 0;
     let mut mins = 0;
-    let mut days= 0;
+    let mut days = 0;
 
     while secs >= 86400 {
-        days +=1;
-        secs -=86400;
+        days += 1;
+        secs -= 86400;
     }
 
     while secs >= 3600 {
@@ -86,36 +90,41 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     let mut sys = System::new_all();
 
     sys.refresh_all();
-    
-    let mut sys_info: HashMap<&str, String> = HashMap::new();
 
-    sys_info.insert("memory_usage", format!(
-        "{}B / {}B ({:.1}%)",
-        bytes_to_human(sys.used_memory()).await,
-        bytes_to_human(sys.total_memory()).await,
-        sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
-    ));
-    
-    
+    let mut sys_info: HashMap<&str, String> = HashMap::new();
+    sys_info.insert(
+        "memory_usage",
+        format!(
+            "{}B / {}B ({:.1}%)",
+            bytes_to_human(sys.used_memory()),
+            bytes_to_human(sys.total_memory()),
+            sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0
+        ),
+    );
+
+    // full system information (see full info command)
     if full {
         let mut cpu_usage = Vec::new();
-        for core in sys.processors() {
-            cpu_usage.push(
-                core.cpu_usage()
-            )     
+        sys.refresh_cpu();
+        tokio::time::sleep(System::MINIMUM_CPU_UPDATE_INTERVAL).await;
+        sys.refresh_cpu();
+        for core in sys.cpus() {
+            cpu_usage.push(core.cpu_usage())
         }
-        sys_info.insert("os_info", sys.long_os_version().unwrap_or(String::from("?")));
+        sys_info.insert(
+            "os_info",
+            sys.long_os_version().unwrap_or(String::from("?")),
+        );
 
-        sys_info.insert("thread_count", format!("{}", sys.processors().len()));
+        sys_info.insert("thread_count", format!("{}", sys.cpus().len()));
 
-        let cpu_usage_str = String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
+        // big brain functional programming
+        let cpu_usage_str =
+            String::from_iter(cpu_usage.iter().map(|usage| format!(" {:.1}%", usage)));
         sys_info.insert("cpu_usage", cpu_usage_str);
-        // for val in &cpu_usage{
-        //     cpu_usage_str.push_str(&format!("\n{:.1}%", val));
-        // }
     }
-
-    if let Some(process) = sys.process(sys.processes_by_name("sbot").nth(0).unwrap().pid()) {
+    let proc = sys.processes_by_name("sbot").next();
+    if let Some(process) = proc {
         sys_info.insert("uptime", format!("{}", &process.run_time()));
     } else {
         sys_info.insert("uptime", "? s".to_string());
@@ -124,56 +133,39 @@ pub async fn get_sys(full: bool) -> HashMap<&'static str, String> {
     sys_info
 }
 
-#[cfg(debug_assertions)]
-pub struct JsonDb {
-    path: PathBuf,
+// Returns a tuple containing a hashset of bot owners' ids and the bot's id
+pub async fn get_owners(token: &str) -> (HashSet<UserId>, UserId) {
+    let http = Http::new(&token);
+
+    // fetch your bot's owners and id
+    let (owners, bot_id) = match http.get_current_application_info().await {
+        Ok(info) => {
+            let mut owners = HashSet::new();
+            if let Some(team) = info.team {
+                for member in team.members {
+                    owners.insert(member.user.id);
+                }
+            } else {
+                owners.insert(info.owner.id);
+            }
+            match http.get_current_user().await {
+                Ok(bot_id) => (owners, bot_id.id),
+                Err(why) => panic!("Could not access the bot id: {:?}", why),
+            }
+        }
+        Err(why) => panic!("Could not access application info: {:?}", why),
+    };
+    return (owners, bot_id);
 }
 
-#[cfg(debug_assertions)]
-impl JsonDb {
-    pub fn new(path: PathBuf) -> Self {
-        JsonDb { path }
-    }
-
-    pub async fn get(&self, key: &str) -> Option<serde_json::Value> {
-        let file = fs::read_to_string(&self.path);
-
-        if let Ok(file) = file {
-            let json: serde_json::Value = serde_json::from_str(&file).unwrap();
-
-            if let Some(val) = json.get(key) {
-                Some(val.clone())
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    pub async fn set(&self, key: &str, value: serde_json::Value) {
-        let file = fs::read_to_string(&self.path);
-
-        if let Ok(file) = file {
-            println!("HELLO {}", &file);
-            let mut json: serde_json::Value = serde_json::from_str(&file).unwrap();
-
-            json[key] = value;
-
-            let json_str = serde_json::to_string(&json).unwrap();
-
-            fs::write(&self.path, json_str).unwrap();
-        }
-    }
-    pub async fn get_all(&self) -> Option<serde_json::Map<String, serde_json::Value>> {
-        let file = fs::read_to_string(&self.path);
-
-        if let Ok(file) = file {
-            let json: serde_json::Value = serde_json::from_str(&file).unwrap();
-
-            Some(json.as_object().unwrap().to_owned())
-        } else {
-            None
-        }
+// removes prefix and possibly whitespace from the beginning of a string
+pub fn remove_prefix_from_message(message: &String, prefix: &str) -> String {
+    if message.starts_with(prefix) {
+        let message = message[prefix.len()..].to_string();
+        let message = message.trim_start(); // trim whitespace from the beginning (if there is any)
+        message.to_string()
+    } else {
+        // should never happen
+        message.to_owned()
     }
 }
