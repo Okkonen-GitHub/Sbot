@@ -6,5 +6,6 @@ pub mod core;
 pub mod owner;
 pub mod activities;
 pub mod suggestions;
+pub mod welcome;
 
 mod tests;
