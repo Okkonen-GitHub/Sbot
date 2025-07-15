@@ -233,7 +233,7 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
     match data {
         Some(data) => {
             let suggestions = data["suggestions"].as_array().unwrap();
-            let mut suggestion = match suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id) {
+            let suggestion = match suggestions.iter().find(|s| s["id"].as_u64().unwrap() == suggestion_id) {
                 Some(s) => s.to_owned(),
                 None => {
                     msg.reply(ctx, "Suggestion not found").await?;
@@ -246,14 +246,22 @@ async fn edit_suggestion(ctx: &Context, msg: &Message) -> CommandResult {
                 return Ok(());
             }
             // edit the suggestion
-            suggestion["suggestion"] = Value::String(edited_suggestion.clone());
+            let suggestions: Vec<Value> = suggestions.clone().iter_mut().map(|suggestion| {
+                if suggestion["id"].as_u64().unwrap() == suggestion_id {
+                    suggestion["suggestion"] = serde_json::Value::String(edited_suggestion.clone());
+                    suggestion.clone()
+                } else {
+                    suggestion.clone()
+                }
+            }).collect(); // this feels so garbage but it works so...
+
             let new_data = serde_json::json!({
                 "suggestion_channel": data["suggestion_channel"].as_u64().unwrap(),
                 "suggestions": suggestions,
                 "welcome_channel": data["welcome_channel"].as_u64()
             });
             // save to db
-            db.set(&guild_id.to_string(), new_data).await; // something is broken here but I'm too sleepy fix it now (doesn't update the suggestion)
+            db.set(&guild_id.to_string(), new_data).await;
 
             // edit the message in the suggestion channel
             let message_id = suggestion["message_id"].as_u64().unwrap();
