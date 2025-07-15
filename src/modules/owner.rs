@@ -1,7 +1,10 @@
-use serenity::{framework::standard::{macros::{command, }, CommandResult}, client::Context, model::channel::Message};
+use serenity::{
+    client::Context,
+    framework::standard::{macros::command, CommandResult},
+    model::channel::Message,
+};
 
 use crate::ShardManagerContainer;
-
 
 #[command]
 #[owners_only]
@@ -13,9 +16,10 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
         msg.reply(ctx, "Shutting down!").await?;
         manager.lock().await.shutdown_all().await;
     } else {
-        msg.reply(ctx, "There was a problem getting the shard manager").await?;
+        msg.reply(ctx, "There was a problem getting the shard manager")
+            .await?;
 
-        return Ok(())
+        return Ok(());
     }
     Ok(())
 }
