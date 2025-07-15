@@ -145,7 +145,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 return Ok(());
             }
         };
-        handler.play_source(source);
+        handler.enqueue_source(source);
 
         msg.reply(&ctx.http, "Playing song").await?;
     } else {
@@ -177,9 +177,64 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 return Ok(());
             }
         };
-        lock.play_source(source);
+        lock.enqueue_source(source);
 
         msg.reply(&ctx.http, "Playing song").await?;
+    }
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx).await.expect("Songbird Voice client placed in at initialisation").clone();
+
+    if let Some(handler_lock) = manager.get(guild.id) {
+        let handler = handler_lock.lock().await;
+        handler.queue().stop();
+    }
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx).await.expect("Songbird Voice client placed in at initialisation").clone();
+
+    if let Some(handler_lock) = manager.get(guild.id) {
+        let handler = handler_lock.lock().await;
+        if let Err(why) = handler.queue().skip() {
+            msg.reply(ctx, format!("Something went wrong: {why}")).await?;
+        }
+    }
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx).await.expect("Songbird Voice client placed in at initialisation").clone();
+
+    if let Some(handler_lock) = manager.get(guild.id) {
+        let _ = handler_lock.lock().await.queue().pause();
+    }
+
+    Ok(())
+}
+#[command]
+#[only_in(guilds)]
+async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx).await.expect("Songbird Voice client placed in at initialisation").clone();
+
+    if let Some(handler_lock) = manager.get(guild.id) {
+        let _ = handler_lock.lock().await.queue().resume();
     }
 
     Ok(())
