@@ -50,7 +50,7 @@ struct General;
 
 #[group]
 #[commands(
-    join, leave, mute, deafen, play, stop, skip, pause, resume, unloop, loop, playing
+    join, leave, mute, deafen, play, stop, skip, pause, resume, unloop, loop, playing, queue
 )]
 struct Music;
 

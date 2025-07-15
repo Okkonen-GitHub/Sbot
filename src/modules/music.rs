@@ -1,5 +1,5 @@
 use serenity::{
-    builder::CreateMessage,
+    builder::{CreateEmbedFooter, CreateMessage},
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
@@ -10,6 +10,7 @@ use super::utils::{remove_prefix_from_message, seconds_to_human};
 use songbird::{input::Restartable, Call}; // for looping and yt searches (first result) (Restartable::*)
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
+
 #[command]
 #[only_in(guilds)]
 async fn join(ctx: &Context, msg: &Message) -> CommandResult {
@@ -403,6 +404,64 @@ async fn unloop(ctx: &Context, msg: &Message) -> CommandResult {
             msg.reply(ctx, "Disabling loop..").await?;
         }
     }
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+#[aliases("q")]
+async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(ctx).await.unwrap();
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation")
+        .clone();
+
+    if let Some(handler_lock) = manager.get(guild.id) {
+        let queue = handler_lock.lock().await.queue().to_owned();
+        let queuelen = queue.len();
+        if queue.is_empty() {
+            msg.reply(ctx, "Queue is empty").await?;
+            return Ok(());
+        }
+        let current_q = queue.current_queue();
+        let queue_msg = String::from_iter(
+            current_q[..{
+                if queuelen <= 10 {
+                    queuelen
+                } else {
+                    10
+                }
+            }]
+                .iter()
+                .map(|trackhandle| {
+                    let metadata = trackhandle.metadata().to_owned();
+                    format!(
+                        "**{}** ({})\n",
+                        metadata.title.unwrap_or("?".to_string()),
+                        seconds_to_human(
+                            metadata
+                                .duration
+                                .unwrap_or(Duration::from_secs(0))
+                                .as_secs()
+                        ),
+                    )
+                }),
+        );
+
+        msg.channel_id
+            .send_message(ctx, |m| {
+                m.embed(|e| {
+                    e.title("Current queue").description(queue_msg).footer(
+                        |f: &mut CreateEmbedFooter| {
+                            f.text(format!("In total {} songs in queue currently (showing the first ten only)", queuelen))
+                        },
+                    )
+                })
+            })
+            .await?;
+    };
 
     Ok(())
 }
